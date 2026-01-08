@@ -36,6 +36,8 @@ class MessageResponse(BaseModel):
     id: int
     role: str
     content: str
+    provider: Optional[str] = None
+    model: Optional[str] = None
     created_at: datetime
     
     class Config:
@@ -81,6 +83,8 @@ class ChatRequest(BaseModel):
     provider: str
     model: str
     messages: List[MessageCreate]
+    message_provider: Optional[str] = None
+    message_model: Optional[str] = None
     stream: bool = True
     temperature: float = Field(default=0.7, ge=0.0, le=2.0)
     max_tokens: Optional[int] = Field(default=None, ge=1)

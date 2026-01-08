@@ -40,6 +40,8 @@ class ChatMessage(Base):
     session_id = Column(Integer, ForeignKey("chat_sessions.id"), nullable=False)
     role = Column(String(20), nullable=False)  # 'user', 'assistant', 'system'
     content = Column(Text, nullable=False)
+    provider = Column(String(50), nullable=True)
+    model = Column(String(100), nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     
     # Relationship to session
@@ -49,6 +51,15 @@ class ChatMessage(Base):
 def init_db():
     """Initialize database tables"""
     Base.metadata.create_all(bind=engine)
+
+    # Lightweight migration for existing SQLite databases (create_all does not add columns).
+    with engine.connect() as conn:
+        result = conn.exec_driver_sql("PRAGMA table_info(chat_messages)")
+        existing_cols = {row[1] for row in result.fetchall()}
+        if "provider" not in existing_cols:
+            conn.exec_driver_sql("ALTER TABLE chat_messages ADD COLUMN provider VARCHAR(50)")
+        if "model" not in existing_cols:
+            conn.exec_driver_sql("ALTER TABLE chat_messages ADD COLUMN model VARCHAR(100)")
 
 
 def get_db():

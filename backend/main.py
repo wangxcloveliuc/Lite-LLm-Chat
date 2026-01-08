@@ -15,7 +15,7 @@ from models import (
     Provider, Model, SessionCreate, SessionUpdate, SessionResponse,
     SessionDetailResponse, ChatRequest, ChatResponse, MessageResponse
 )
-from deepseek_client import deepseek_client
+from provider_registry import get_provider, list_models as registry_list_models, list_providers as registry_list_providers
 
 # Lifespan handler to initialize resources on startup/shutdown
 @asynccontextmanager
@@ -48,15 +48,7 @@ app.add_middleware(
 @app.get(f"{settings.api_prefix}/providers", response_model=List[Provider])
 async def get_providers():
     """Get list of available LLM providers"""
-    providers = [
-        Provider(
-            id="deepseek",
-            name="DeepSeek",
-            description="DeepSeek AI language models",
-            supported=True
-        ),
-    ]
-    return providers
+    return [Provider(**p) for p in registry_list_providers()]
 
 
 # ==================== Model Endpoints ====================
@@ -69,25 +61,7 @@ async def get_models(provider: str = None):
     Args:
         provider: Optional filter by provider ID
     """
-    models = [
-        Model(
-            id="deepseek-chat",
-            name="DeepSeek Chat",
-            provider="deepseek",
-            description="DeepSeek's flagship conversational model"
-        ),
-        Model(
-            id="deepseek-reasoner",
-            name="DeepSeek Reasoner",
-            provider="deepseek",
-            description="DeepSeek's advanced reasoning model"
-        )
-    ]
-    
-    if provider:
-        models = [m for m in models if m.provider == provider]
-    
-    return models
+    return [Model(**m) for m in registry_list_models(provider=provider)]
 
 
 # ==================== Session Endpoints ====================
@@ -280,6 +254,15 @@ async def chat_completion(request: ChatRequest, db: Session = Depends(get_db)):
         db.add(session)
         db.commit()
         db.refresh(session)
+
+    provider_id = request.message_provider or request.provider
+    model_id = request.message_model or request.model
+    provider_client = get_provider(provider_id)
+    if not provider_client:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unsupported provider: {provider_id}"
+        )
     
     # Read existing session history (oldest -> newest)
     existing_messages = (
@@ -296,7 +279,10 @@ async def chat_completion(request: ChatRequest, db: Session = Depends(get_db)):
     api_messages = [{"role": m.role, "content": m.content} for m in existing_messages] + [{"role": r, "content": c} for r, c in incoming_tuples]
 
     # Keep in-memory ChatMessage objects for deduped incoming messages to persist later if the model call succeeds
-    incoming_msg_objects = [ChatMessage(session_id=session.id, role=r, content=c) for r, c in incoming_tuples]
+    incoming_msg_objects = [
+        ChatMessage(session_id=session.id, role=r, content=c, provider=provider_id, model=model_id)
+        for r, c in incoming_tuples
+    ]
 
     # Stream response
     if request.stream:
@@ -309,8 +295,8 @@ async def chat_completion(request: ChatRequest, db: Session = Depends(get_db)):
             full_response = ""
             failed = False
             try:
-                async for chunk in deepseek_client.stream_chat(
-                    model=request.model,
+                async for chunk in provider_client.stream_chat(
+                    model=model_id,
                     messages=api_messages,
                     temperature=request.temperature,
                     max_tokens=request.max_tokens
@@ -345,9 +331,13 @@ async def chat_completion(request: ChatRequest, db: Session = Depends(get_db)):
                     assistant_message = ChatMessage(
                         session_id=session.id,
                         role="assistant",
-                        content=full_response
+                        content=full_response,
+                        provider=provider_id,
+                        model=model_id
                     )
                     db.add(assistant_message)
+                    session.provider = provider_id
+                    session.model = model_id
                     session.updated_at = datetime.now(timezone.utc)
                     db.commit()
             except Exception as e:
@@ -361,27 +351,31 @@ async def chat_completion(request: ChatRequest, db: Session = Depends(get_db)):
     # Non-streaming response
     else:
         try:
-            response_content = await deepseek_client.chat(
-                model=request.model,
+            response_content = await provider_client.chat(
+                model=model_id,
                 messages=api_messages,
                 temperature=request.temperature,
                 max_tokens=request.max_tokens
             )
         except Exception as e:
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"DeepSeek API error: {str(e)}")
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Provider error: {str(e)}")
         
         # Persist incoming messages and assistant response atomically only if assistant produced content
         if not response_content:
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Empty response from DeepSeek")
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Empty response from provider")
         try:
             if incoming_msg_objects:
                 db.add_all(incoming_msg_objects)
             assistant_message = ChatMessage(
                 session_id=session.id,
                 role="assistant",
-                content=response_content
+                content=response_content,
+                provider=provider_id,
+                model=model_id
             )
             db.add(assistant_message)
+            session.provider = provider_id
+            session.model = model_id
             session.updated_at = datetime.now(timezone.utc)
             db.commit()
             db.refresh(assistant_message)
