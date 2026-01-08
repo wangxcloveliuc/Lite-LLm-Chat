@@ -40,7 +40,7 @@ body {
     display: flex;
     align-items: center;
     gap: 4px;
-    padding: 12px 12px 12px 2px;
+    padding: 12px 12px 12px 8px;
     border: none;
     background: none;
     border-radius: 8px;
@@ -101,10 +101,6 @@ body {
     transition: transform 0.2s ease;
 }
 
-.model-selector:hover .chevron-icon {
-    transform: translateY(1px);
-}
-
 /* Central Interface */
 .central-interface {
     flex: 1;
@@ -123,8 +119,6 @@ body {
     width: 100%;
     text-align: center;
     opacity: 1;
-    transition: opacity 0.3s ease;
-    z-index: 10;
 }
 
 .greeting.hidden {
@@ -191,7 +185,6 @@ body {
     top: 50%;
     left: 50%;
     transform: translate(-50%, calc(-50% - 50px));
-    transition: all 0.3s ease;
 }
 
 .input-container.chat-active {
@@ -339,16 +332,8 @@ body {
 }
 
 /* Focus States */
-.sidebar-item:focus-visible {
-    outline: 2px solid #3B82F6;
-    outline-offset: 2px;
-}
-
-.model-selector:focus-visible {
-    outline: 2px solid #3B82F6;
-    outline-offset: 2px;
-}
-
+.sidebar-item:focus-visible,
+.model-selector:focus-visible,
 .attachment-btn:focus-visible,
 .send-btn:focus-visible {
     outline: 2px solid #3B82F6;
@@ -423,8 +408,8 @@ body {
 }
 
 .provider-name {
-    font-size: 16px;
-    font-weight: 600;
+    font-size: 14px;
+    font-weight: 400;
     color: #000000;
 }
 
