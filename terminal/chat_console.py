@@ -29,7 +29,7 @@ class ChatConsole:
         
         # Settings
         self.streaming_enabled: bool = True
-        self.temperature: float = 0.7
+        self.temperature: float = 1.0
         self.max_tokens: Optional[int] = None
         
         # Prompt session for input
@@ -140,12 +140,13 @@ class ChatConsole:
     
     async def _handle_streaming_response(self, messages: List[Message]):
         """Handle streaming chat response"""
-        full_content = ""
         thinking_content = ""
         session_id = None
         has_error = False
         
-        self.ui.print_streaming_start()
+        thinking_started = False
+        reasoning_active = False
+        assistant_started = False
         
         async for chunk in self.client.chat_stream(
             messages=messages,
@@ -164,29 +165,49 @@ class ChatConsole:
                     # Reload session to get updated info
                     self.current_session = await self.client.get_session(session_id)
             
+            # Handle reasoning/thinking
+            if 'reasoning' in chunk:
+                reasoning = chunk['reasoning']
+                thinking_content += reasoning
+                if not thinking_started:
+                    thinking_started = True
+                    reasoning_active = True
+                    self.ui.print_thinking_start()
+                else:
+                    reasoning_active = True
+                self.ui.print_thinking_chunk(reasoning)
+            else:
+                if reasoning_active:
+                    reasoning_active = False
+                    self.ui.print_thinking_end()
+            
             # Handle content
             if 'content' in chunk:
                 content = chunk['content']
-                full_content += content
+                # If reasoning is active, end thinking before printing content
+                if reasoning_active:
+                    reasoning_active = False
+                    self.ui.print_thinking_end()
+                if not assistant_started:
+                    self.ui.print_streaming_start()
+                    assistant_started = True
                 self.ui.print_chunk(content)
-            
-            # Handle reasoning/thinking
-            if 'reasoning' in chunk:
-                thinking_content += chunk['reasoning']
             
             # Handle errors
             if 'error' in chunk:
                 has_error = True
+                if reasoning_active:
+                    reasoning_active = False
+                    self.ui.print_thinking_end()
                 self.ui.print_streaming_end()
                 self.ui.print_error(f"Error: {chunk['error']}")
                 break
         
         if not has_error:
+            if reasoning_active:
+                reasoning_active = False
+                self.ui.print_thinking_end()
             self.ui.print_streaming_end()
-            
-            # Display thinking process if available
-            if thinking_content:
-                self.ui.print_thinking(thinking_content)
             
             # Update session message count
             if self.current_session and session_id:
@@ -218,10 +239,6 @@ class ChatConsole:
             )
             
             self.ui.print_message(assistant_message, show_metadata=True)
-            
-            # Display thinking process if available
-            if assistant_message.thought_process:
-                self.ui.print_thinking(assistant_message.thought_process)
             
             # Update session
             if 'session_id' in result:

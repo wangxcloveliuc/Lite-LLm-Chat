@@ -47,15 +47,15 @@ class DeepSeekClient:
             for chunk in response:
                 delta = chunk.choices[0].delta
                 
+                # Handle reasoning content (for inference models) — yield reasoning first so client can buffer content properly
+                if hasattr(delta, 'reasoning_content') and delta.reasoning_content:
+                    reasoning = delta.reasoning_content
+                    yield f"data: {json.dumps({'reasoning': reasoning})}\n\n"
+                
                 # Handle regular content
                 if delta.content:
                     content = delta.content
                     yield f"data: {json.dumps({'content': content})}\n\n"
-                
-                # Handle reasoning content (for inference models)
-                if hasattr(delta, 'reasoning_content') and delta.reasoning_content:
-                    reasoning = delta.reasoning_content
-                    yield f"data: {json.dumps({'reasoning': reasoning})}\n\n"
             
             # Send completion signal
             yield f"data: {json.dumps({'done': True})}\n\n"

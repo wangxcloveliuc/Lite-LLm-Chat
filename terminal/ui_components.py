@@ -171,6 +171,10 @@ class ChatUI:
         
         # Create title
         header = f"{icon} {title}{metadata}"
+
+        # For assistant messages, show thinking before the final answer to match the streaming flow.
+        if role == "assistant" and message.thought_process:
+            ChatUI.print_thinking(message.thought_process)
         
         # Print message in a panel
         console.print(Panel(
@@ -180,14 +184,29 @@ class ChatUI:
             border_style=color,
             padding=(0, 2)
         ))
-        
-        # Display thinking process if available
-        if message.thought_process:
+
+        # For non-assistant roles, keep any thought_process (if ever present) after the message.
+        if role != "assistant" and message.thought_process:
             ChatUI.print_thinking(message.thought_process)
     
     @staticmethod
+    def print_thinking_start():
+        """Print start of thinking/reasoning process"""
+        console.print(f"\n[{ChatUI.COLOR_THINKING}]🧠 Thinking:[/]", end=" ")
+    
+    @staticmethod
+    def print_thinking_chunk(chunk: str):
+        """Print a thinking chunk"""
+        console.print(chunk, end="")
+    
+    @staticmethod
+    def print_thinking_end():
+        """Print end of thinking/reasoning process"""
+        console.print("\n")
+    
+    @staticmethod
     def print_thinking(content: str):
-        """Print model thinking/reasoning process"""
+        """Print model thinking/reasoning process (non-streaming)"""
         console.print(Panel(
             Markdown(content),
             title="🧠 Thinking",
@@ -240,7 +259,7 @@ class ChatUI:
 
 • **Settings**
   - `/stream on|off` - Toggle streaming mode
-  - `/temp <0.0-2.0>` - Set temperature (default: 0.7)
+  - `/temp <0.0-2.0>` - Set temperature (default: 1.0)
   - `/info` - Show current session info
 
 **Tips:**
