@@ -171,8 +171,8 @@ class ChatConsole:
                 self.ui.print_chunk(content)
             
             # Handle reasoning/thinking
-            if 'reasoning_content' in chunk:
-                thinking_content += chunk['reasoning_content']
+            if 'reasoning' in chunk:
+                thinking_content += chunk['reasoning']
             
             # Handle errors
             if 'error' in chunk:
@@ -211,12 +211,17 @@ class ChatConsole:
                 id=msg_data['id'],
                 role=msg_data['role'],
                 content=msg_data['content'],
+                thought_process=msg_data.get('thought_process'),
                 provider=msg_data.get('provider'),
                 model=msg_data.get('model'),
                 created_at=datetime.fromisoformat(msg_data['created_at'].replace('Z', '+00:00'))
             )
             
             self.ui.print_message(assistant_message, show_metadata=True)
+            
+            # Display thinking process if available
+            if assistant_message.thought_process:
+                self.ui.print_thinking(assistant_message.thought_process)
             
             # Update session
             if 'session_id' in result:

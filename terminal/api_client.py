@@ -37,6 +37,7 @@ class Message:
     created_at: Optional[datetime] = None
     provider: Optional[str] = None
     model: Optional[str] = None
+    thought_process: Optional[str] = None
 
 
 @dataclass
@@ -141,6 +142,7 @@ class APIClient:
                         id=m['id'],
                         role=m['role'],
                         content=m['content'],
+                        thought_process=m.get('thought_process'),
                         provider=m.get('provider'),
                         model=m.get('model'),
                         created_at=datetime.fromisoformat(m['created_at'].replace('Z', '+00:00'))

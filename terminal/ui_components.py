@@ -180,6 +180,10 @@ class ChatUI:
             border_style=color,
             padding=(0, 2)
         ))
+        
+        # Display thinking process if available
+        if message.thought_process:
+            ChatUI.print_thinking(message.thought_process)
     
     @staticmethod
     def print_thinking(content: str):
