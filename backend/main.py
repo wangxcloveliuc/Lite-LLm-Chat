@@ -228,6 +228,16 @@ async def delete_session(session_id: int, db: Session = Depends(get_db)):
     db.commit()
 
 
+@app.delete(f"{settings.api_prefix}/sessions", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_all_sessions(db: Session = Depends(get_db)):
+    """
+    Delete all chat sessions
+    """
+    db.query(ChatMessage).delete()
+    db.query(ChatSession).delete()
+    db.commit()
+
+
 # ==================== Chat Endpoints ====================
 
 @app.post(f"{settings.api_prefix}/chat")

@@ -192,6 +192,11 @@ class APIClient:
         async with self.session.delete(self._url(f"/sessions/{session_id}")) as resp:
             return resp.status == 204
     
+    async def delete_all_sessions(self) -> bool:
+        """Delete all sessions"""
+        async with self.session.delete(self._url("/sessions")) as resp:
+            return resp.status == 204
+    
     # ==================== Chat Methods ====================
     
     async def chat(

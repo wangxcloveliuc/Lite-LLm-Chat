@@ -123,6 +123,9 @@ class ChatConsole:
             if not await self.create_session():
                 return
         
+        # Check if this is the first message in the session
+        is_new_session = self.current_session.message_count == 0
+        
         # Create user message
         user_message = Message(role="user", content=content)
         
@@ -137,6 +140,17 @@ class ChatConsole:
                 await self._handle_streaming_response(messages)
             else:
                 await self._handle_non_streaming_response(messages)
+            
+            # Automatically rename session after the first message
+            if is_new_session and self.current_session and self.current_session.message_count > 0:
+                # Use a truncated version of the first message as the title
+                new_title = content.strip().split('\n')[0][:50]
+                if not new_title:
+                    new_title = f"Chat {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+                
+                if await self.client.update_session(self.current_session.id, new_title):
+                    self.current_session.title = new_title
+                    
         except Exception as e:
             self.ui.print_error(f"Error during chat: {str(e)}")
     
@@ -328,6 +342,20 @@ class ChatConsole:
                         self.ui.print_error(f"Failed to delete session {session_id}")
                 except ValueError:
                     self.ui.print_error("Session ID must be a number")
+        
+        elif cmd == '/deleteall':
+            confirm = await asyncio.get_event_loop().run_in_executor(
+                None,
+                lambda: self.prompt_session.prompt("Are you sure you want to delete ALL sessions? (y/n): ")
+            )
+            if confirm.lower() in ['y', 'yes']:
+                if await self.client.delete_all_sessions():
+                    self.ui.print_success("Deleted all sessions")
+                    self.current_session = None
+                else:
+                    self.ui.print_error("Failed to delete all sessions")
+            else:
+                self.ui.print_info("Cancelled")
         
         elif cmd == '/rename':
             if len(parts) < 2:

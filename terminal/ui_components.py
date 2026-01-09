@@ -262,6 +262,7 @@ class ChatUI:
   - `/sessions` - List all sessions
   - `/load <session_id>` - Load an existing session
   - `/delete <session_id>` - Delete a session
+  - `/deleteall` - Delete all sessions
   - `/rename <new_title>` - Rename current session
 
 • **Model Management**
