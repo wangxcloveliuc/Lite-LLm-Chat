@@ -19,6 +19,10 @@ class Settings(BaseSettings):
     # DeepSeek API
     deepseek_api_key: Optional[str] = None
     deepseek_base_url: str = "https://api.deepseek.com"
+
+    # Doubao (Volcengine Ark) API
+    doubao_api_key: Optional[str] = None
+    doubao_base_url: str = "https://ark.cn-beijing.volces.com/api/v3"
     
     # CORS
     cors_origins: list = ["*"]
