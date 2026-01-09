@@ -23,6 +23,10 @@ class Settings(BaseSettings):
     # Doubao (Volcengine Ark) API
     doubao_api_key: Optional[str] = None
     doubao_base_url: str = "https://ark.cn-beijing.volces.com/api/v3"
+
+    # SiliconFlow (OpenAI-compatible) API
+    siliconflow_api_key: Optional[str] = None
+    siliconflow_base_url: str = "https://api.siliconflow.cn/v1"
     
     # CORS
     cors_origins: list = ["*"]

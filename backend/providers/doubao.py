@@ -73,12 +73,6 @@ class DoubaoProvider:
             
             # Extract context length from id if present
             context = ""
-            parts = model_id.split("-")
-            for i, part in enumerate(parts):
-                if part.endswith("k") and part[:-1].isdigit():
-                    context = f" ({part.upper()} context)"
-                elif part.isdigit() and len(part) == 6:
-                    context = f" ({part} context)"
             
             models.append({
                 "id": model_id,
