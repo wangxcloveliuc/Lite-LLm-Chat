@@ -45,10 +45,17 @@ class DeepSeekClient:
             )
             
             for chunk in response:
-                if chunk.choices[0].delta.content:
-                    # Yield SSE formatted data
-                    content = chunk.choices[0].delta.content
+                delta = chunk.choices[0].delta
+                
+                # Handle regular content
+                if delta.content:
+                    content = delta.content
                     yield f"data: {json.dumps({'content': content})}\n\n"
+                
+                # Handle reasoning content (for inference models)
+                if hasattr(delta, 'reasoning_content') and delta.reasoning_content:
+                    reasoning = delta.reasoning_content
+                    yield f"data: {json.dumps({'reasoning': reasoning})}\n\n"
             
             # Send completion signal
             yield f"data: {json.dumps({'done': True})}\n\n"
@@ -63,7 +70,7 @@ class DeepSeekClient:
         messages: List[Dict[str, str]],
         temperature: float = 1,
         max_tokens: int = None
-    ) -> str:
+    ) -> tuple[str, str]:
         """
         Non-streaming chat completion
         
@@ -74,7 +81,7 @@ class DeepSeekClient:
             max_tokens: Maximum tokens to generate
             
         Returns:
-            Complete response text
+            Tuple of (content, reasoning) where reasoning may be empty string
         """
         try:
             response = self.client.chat.completions.create(
@@ -84,7 +91,15 @@ class DeepSeekClient:
                 max_tokens=max_tokens,
                 stream=False
             )
-            return response.choices[0].message.content
+            
+            content = response.choices[0].message.content or ""
+            reasoning = ""
+            
+            # Extract reasoning content if available (for inference models)
+            if hasattr(response.choices[0].message, 'reasoning_content'):
+                reasoning = response.choices[0].message.reasoning_content or ""
+            
+            return content, reasoning
         except Exception as e:
             raise Exception(f"DeepSeek API error: {str(e)}")
 

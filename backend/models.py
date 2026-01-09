@@ -38,6 +38,7 @@ class MessageResponse(BaseModel):
     content: str
     provider: Optional[str] = None
     model: Optional[str] = None
+    thought_process: Optional[str] = None
     created_at: datetime
     
     class Config:

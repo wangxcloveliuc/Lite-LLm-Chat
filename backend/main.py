@@ -293,6 +293,7 @@ async def chat_completion(request: ChatRequest, db: Session = Depends(get_db)):
             yield f"data: {json.dumps({'session_id': session.id})}\n\n"
             
             full_response = ""
+            full_reasoning = ""
             failed = False
             try:
                 async for chunk in provider_client.stream_chat(
@@ -302,12 +303,14 @@ async def chat_completion(request: ChatRequest, db: Session = Depends(get_db)):
                     max_tokens=request.max_tokens
                 ):
                     yield chunk
-                    # Extract content for saving and detect errors
+                    # Extract content and reasoning for saving and detect errors
                     if chunk.startswith("data: "):
                         try:
                             data = json.loads(chunk[6:])
                             if "content" in data:
                                 full_response += data["content"]
+                            if "reasoning" in data:
+                                full_reasoning += data["reasoning"]
                             if "error" in data:
                                 failed = True
                                 # stop processing further chunks
@@ -332,6 +335,7 @@ async def chat_completion(request: ChatRequest, db: Session = Depends(get_db)):
                         session_id=session.id,
                         role="assistant",
                         content=full_response,
+                        thought_process=full_reasoning if full_reasoning else None,
                         provider=provider_id,
                         model=model_id
                     )
@@ -351,7 +355,7 @@ async def chat_completion(request: ChatRequest, db: Session = Depends(get_db)):
     # Non-streaming response
     else:
         try:
-            response_content = await provider_client.chat(
+            response_content, reasoning_content = await provider_client.chat(
                 model=model_id,
                 messages=api_messages,
                 temperature=request.temperature,
@@ -370,6 +374,7 @@ async def chat_completion(request: ChatRequest, db: Session = Depends(get_db)):
                 session_id=session.id,
                 role="assistant",
                 content=response_content,
+                thought_process=reasoning_content if reasoning_content else None,
                 provider=provider_id,
                 model=model_id
             )

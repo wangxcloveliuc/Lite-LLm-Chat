@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 from deepseek_client import deepseek_client
 
@@ -9,7 +9,7 @@ class LLMProvider:
     description: str
     supported: bool
 
-    async def chat(self, model: str, messages: List[Dict[str, str]], temperature: float = 1, max_tokens: Optional[int] = None) -> str:
+    async def chat(self, model: str, messages: List[Dict[str, str]], temperature: float = 1, max_tokens: Optional[int] = None) -> Tuple[str, str]:
         raise NotImplementedError()
 
     async def stream_chat(self, model: str, messages: List[Dict[str, str]], temperature: float = 1, max_tokens: Optional[int] = None):
