@@ -3,10 +3,12 @@ Lite-LLM-Chat Terminal Console Application
 Main application with session management, model switching, and streaming support
 """
 import asyncio
+import os
 import sys
 from typing import Optional, List
 from datetime import datetime
 from prompt_toolkit import PromptSession
+from prompt_toolkit.patch_stdout import patch_stdout
 from prompt_toolkit.history import InMemoryHistory
 from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
 
@@ -140,6 +142,7 @@ class ChatConsole:
     
     async def _handle_streaming_response(self, messages: List[Message]):
         """Handle streaming chat response"""
+        debug_stream = os.getenv("LITE_LLM_CHAT_DEBUG_STREAM") in ("1", "true", "yes", "on")
         thinking_content = ""
         session_id = None
         has_error = False
@@ -158,6 +161,9 @@ class ChatConsole:
             temperature=self.temperature,
             max_tokens=self.max_tokens
         ):
+            if debug_stream:
+                sys.stderr.write(f"\n[debug stream {datetime.now().isoformat()}] keys={list(chunk.keys())}\n")
+                sys.stderr.flush()
             # Extract session_id
             if 'session_id' in chunk and not session_id:
                 session_id = chunk['session_id']
@@ -437,7 +443,8 @@ class ChatConsole:
                             break
                     else:
                         # Send chat message
-                        await self.send_message(user_input)
+                        with patch_stdout():
+                            await self.send_message(user_input)
                 
                 except KeyboardInterrupt:
                     self.ui.print_warning("\nUse /exit to quit")

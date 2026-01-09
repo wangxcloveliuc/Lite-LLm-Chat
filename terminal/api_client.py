@@ -265,11 +265,28 @@ class APIClient:
         
         async with self.session.post(self._url("/chat"), json=payload) as resp:
             if resp.status == 200:
-                async for line in resp.content:
-                    line = line.decode('utf-8').strip()
-                    if line.startswith('data: '):
+                buffer = ""
+                # Use a small chunk size to avoid client-side buffering delaying SSE processing.
+                async for chunk in resp.content.iter_chunked(1024):
+                    if not chunk:
+                        continue
+                    buffer += chunk.decode('utf-8', errors='ignore')
+
+                    while "\n" in buffer:
+                        raw_line, buffer = buffer.split("\n", 1)
+                        line = raw_line.rstrip("\r")
+                        if not line:
+                            continue
+                        if not line.startswith('data:'):
+                            continue
+
+                        data_str = line[5:].lstrip()
+                        if not data_str:
+                            continue
+                        if data_str == "[DONE]":
+                            return
                         try:
-                            data = json.loads(line[6:])
+                            data = json.loads(data_str)
                             yield data
                         except json.JSONDecodeError:
                             continue

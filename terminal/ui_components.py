@@ -2,6 +2,8 @@
 UI Components for Terminal Chat Application
 Uses rich library for beautiful terminal output
 """
+import sys
+
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
@@ -14,7 +16,15 @@ from datetime import datetime
 from api_client import Provider, Model, Session, Message
 
 
-console = Console()
+try:
+    from colorama import just_fix_windows_console
+
+    just_fix_windows_console()
+except Exception:
+    pass
+
+
+console = Console(file=sys.__stdout__)
 
 
 class ChatUI:
@@ -198,6 +208,7 @@ class ChatUI:
     def print_thinking_chunk(chunk: str):
         """Print a thinking chunk"""
         console.print(chunk, end="")
+        console.file.flush()
     
     @staticmethod
     def print_thinking_end():
@@ -227,6 +238,7 @@ class ChatUI:
     def print_chunk(chunk: str):
         """Print a streaming chunk"""
         console.print(chunk, end="")
+        console.file.flush()
     
     @staticmethod
     def print_streaming_end():

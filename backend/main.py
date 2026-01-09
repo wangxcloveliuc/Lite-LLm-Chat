@@ -1,6 +1,8 @@
 """
 FastAPI Backend for Lite-LLM-Chat
 """
+import asyncio
+
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
@@ -291,6 +293,7 @@ async def chat_completion(request: ChatRequest, db: Session = Depends(get_db)):
             # Send session ID first
             import json
             yield f"data: {json.dumps({'session_id': session.id})}\n\n"
+            await asyncio.sleep(0)
             
             full_response = ""
             full_reasoning = ""
@@ -303,6 +306,7 @@ async def chat_completion(request: ChatRequest, db: Session = Depends(get_db)):
                     max_tokens=request.max_tokens
                 ):
                     yield chunk
+                    await asyncio.sleep(0)
                     # Extract content and reasoning for saving and detect errors
                     if chunk.startswith("data: "):
                         try:
@@ -347,10 +351,12 @@ async def chat_completion(request: ChatRequest, db: Session = Depends(get_db)):
             except Exception as e:
                 # If saving fails, notify client
                 yield f"data: {json.dumps({'error': 'Failed to save messages'})}\n\n"        
-        return StreamingResponse(
-            generate(),
-            media_type="text/event-stream"
-        )
+        headers = {
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        }
+        return StreamingResponse(generate(), media_type="text/event-stream", headers=headers)
     
     # Non-streaming response
     else:
