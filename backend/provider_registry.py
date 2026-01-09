@@ -1,6 +1,11 @@
 from typing import Dict, List, Optional, Tuple
+import pkgutil
+import importlib
 
-from deepseek_client import deepseek_client
+
+# Provider adapter modules should expose a module-level `provider` instance
+# which the registry will discover dynamically.
+
 
 
 class LLMProvider:
@@ -19,49 +24,38 @@ class LLMProvider:
         raise NotImplementedError()
 
 
-class DeepSeekProvider(LLMProvider):
-    id = "deepseek"
-    name = "DeepSeek"
-    description = "DeepSeek AI language models"
-    supported = True
+def _discover_providers() -> Dict[str, LLMProvider]:
+    registry: Dict[str, LLMProvider] = {}
+    
+    # Try to import the providers package relatively or absolutely
+    providers_pkg = None
+    try:
+        from . import providers as providers_pkg
+    except (ImportError, ValueError):
+        try:
+            import providers as providers_pkg
+        except ImportError:
+            return registry
 
-    async def chat(self, model: str, messages: List[Dict[str, str]], temperature: float = 1, max_tokens: Optional[int] = None) -> str:
-        return await deepseek_client.chat(
-            model=model,
-            messages=messages,
-            temperature=temperature,
-            max_tokens=max_tokens,
-        )
+    if not providers_pkg:
+        return registry
 
-    async def stream_chat(self, model: str, messages: List[Dict[str, str]], temperature: float = 1, max_tokens: Optional[int] = None):
-        async for chunk in deepseek_client.stream_chat(
-            model=model,
-            messages=messages,
-            temperature=temperature,
-            max_tokens=max_tokens,
-        ):
-            yield chunk
+    for finder, name, ispkg in pkgutil.iter_modules(providers_pkg.__path__):
+        try:
+            # Import modules relative to the providers package name
+            mod_name = f"{providers_pkg.__name__}.{name}"
+            mod = importlib.import_module(mod_name)
+            p = getattr(mod, "provider", None)
+            if p and getattr(p, "id", None):
+                registry[p.id] = p
+        except Exception:
+            # Ignore problematic provider modules so registry remains usable
+            continue
 
-    def list_models(self) -> List[Dict[str, object]]:
-        return [
-            {
-                "id": "deepseek-chat",
-                "name": "DeepSeek Chat",
-                "provider": "deepseek",
-                "description": "DeepSeek's flagship conversational model",
-            },
-            {
-                "id": "deepseek-reasoner",
-                "name": "DeepSeek Reasoner",
-                "provider": "deepseek",
-                "description": "DeepSeek's advanced reasoning model",
-            },
-        ]
+    return registry
 
 
-_PROVIDER_REGISTRY: Dict[str, LLMProvider] = {
-    DeepSeekProvider.id: DeepSeekProvider(),
-}
+_PROVIDER_REGISTRY: Dict[str, LLMProvider] = _discover_providers()
 
 
 def list_providers() -> List[Dict[str, object]]:
