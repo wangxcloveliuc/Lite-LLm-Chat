@@ -4,7 +4,10 @@ DeepSeek API client (moved into providers)
 from openai import OpenAI
 from typing import List, Dict, AsyncIterator, Optional, Tuple
 import json
-from ..config import settings
+try:
+    from ..config import settings
+except (ImportError, ValueError):
+    from config import settings
 
 
 class DeepSeekClient:
