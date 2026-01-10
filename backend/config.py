@@ -33,6 +33,10 @@ class Settings(BaseSettings):
     # Groq (OpenAI-compatible) API
     groq_api_key: Optional[str] = None
     groq_base_url: str = "https://api.groq.com/openai/v1"
+
+    # Mistral (OpenAI-compatible) API
+    mistral_api_key: Optional[str] = None
+    mistral_base_url: str = "https://api.mistral.ai/v1"
     
     # CORS
     cors_origins: list = ["*"]
