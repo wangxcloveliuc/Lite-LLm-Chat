@@ -98,6 +98,15 @@ class GroqClient:
         except Exception as e:
             raise Exception(f"Groq API error: {str(e)}")
 
+    def list_models(self) -> List[str]:
+        """List available models from Groq API"""
+        try:
+            response = self.client.models.list()
+            return [model.id for model in response.data]
+        except Exception as e:
+            print(f"Error fetching Groq models: {e}")
+            return []
+
 
 # Singleton instance
 groq_client = GroqClient()

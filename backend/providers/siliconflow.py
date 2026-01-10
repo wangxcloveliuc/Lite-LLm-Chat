@@ -38,7 +38,7 @@ class SiliconFlowProvider:
         ):
             yield chunk
 
-    def list_models(self) -> List[Dict[str, object]]:
+    async def list_models(self) -> List[Dict[str, object]]:
         # Keeping this small and safe; you can extend via env/config if needed.
         model_ids = [
             "THUDM/GLM-Z1-Rumination-32B-0414",

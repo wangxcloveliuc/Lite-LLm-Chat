@@ -27,7 +27,7 @@ class DeepSeekProvider:
         ):
             yield chunk
 
-    def list_models(self) -> List[Dict[str, object]]:
+    async def list_models(self) -> List[Dict[str, object]]:
         return [
             {
                 "id": "deepseek-chat",

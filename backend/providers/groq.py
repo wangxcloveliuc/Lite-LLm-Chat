@@ -38,21 +38,23 @@ class GroqProvider:
         ):
             yield chunk
 
-    def list_models(self) -> List[Dict[str, object]]:
-        model_ids = [
-            "llama-3.1-8b-instant",
-            "llama-3.3-70b-versatile",
-            "openai/gpt-oss-120b",
-            "openai/gpt-oss-20b",
-            "meta-llama/llama-4-maverick-17b-128e-instruct",
-            "meta-llama/llama-4-scout-17b-16e-instruct",
-            "moonshotai/kimi-k2-instruct",
-            "moonshotai/kimi-k2-instruct-0905",
-            "qwen/qwen3-32b",
-        ]
+    async def list_models(self) -> List[Dict[str, object]]:
+        from .groq_client import groq_client
+        model_ids = groq_client.list_models()
+
+        # Fallback if API returns nothing (optional, but good for stability)
+        if not model_ids:
+            model_ids = [
+                "llama-3.1-8b-instant",
+                "llama-3.3-70b-versatile",
+            ]
 
         models: List[Dict[str, object]] = []
         for model_id in model_ids:
+            # Filter out non-text models like whisper
+            if "whisper" in model_id.lower():
+                continue
+                
             name_parts = model_id.replace("/", " ").replace("-", " ").title().split()
             name = " ".join(name_parts)
             models.append(

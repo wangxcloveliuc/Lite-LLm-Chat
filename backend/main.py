@@ -63,7 +63,7 @@ async def get_models(provider: str = None):
     Args:
         provider: Optional filter by provider ID
     """
-    return [Model(**m) for m in registry_list_models(provider=provider)]
+    return [Model(**m) for m in await registry_list_models(provider=provider)]
 
 
 # ==================== Session Endpoints ====================

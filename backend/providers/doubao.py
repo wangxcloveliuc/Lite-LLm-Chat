@@ -37,7 +37,7 @@ class DoubaoProvider:
         ):
             yield chunk
 
-    def list_models(self) -> List[Dict[str, object]]:
+    async def list_models(self) -> List[Dict[str, object]]:
         model_ids = [
             "doubao-1-5-lite-32k-250115",
             "doubao-1-5-pro-32k-250115",

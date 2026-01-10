@@ -20,7 +20,7 @@ class LLMProvider:
     async def stream_chat(self, model: str, messages: List[Dict[str, str]], temperature: float = 1, max_tokens: Optional[int] = None):
         raise NotImplementedError()
 
-    def list_models(self) -> List[Dict[str, object]]:
+    async def list_models(self) -> List[Dict[str, object]]:
         raise NotImplementedError()
 
 
@@ -70,16 +70,17 @@ def list_providers() -> List[Dict[str, object]]:
     ]
 
 
-def list_models(provider: Optional[str] = None) -> List[Dict[str, object]]:
+async def list_models(provider: Optional[str] = None) -> List[Dict[str, object]]:
     if provider:
         p = _PROVIDER_REGISTRY.get(provider)
         if not p:
             return []
-        return p.list_models()
+        return await p.list_models()
 
     all_models: List[Dict[str, object]] = []
     for p in _PROVIDER_REGISTRY.values():
-        all_models.extend(p.list_models())
+        models = await p.list_models()
+        all_models.extend(models)
     return all_models
 
 
