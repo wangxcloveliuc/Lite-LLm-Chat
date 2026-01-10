@@ -131,11 +131,15 @@ class APIClient {
     }
   }
 
-  async *chatStream(request: ChatRequest): AsyncGenerator<StreamChunk, void, unknown> {
+  async *chatStream(
+    request: ChatRequest,
+    signal?: AbortSignal
+  ): AsyncGenerator<StreamChunk, void, unknown> {
     const response = await fetch(this.url('/chat'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(request),
+      signal,
     });
 
     if (!response.ok || !response.body) {

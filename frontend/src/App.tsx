@@ -15,6 +15,7 @@ function App() {
   const [selectedProvider, setSelectedProvider] = useState<string>('');
   const [selectedModel, setSelectedModel] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
+  const [abortController, setAbortController] = useState<AbortController | null>(null);
 
   useEffect(() => {
     loadProviders();
@@ -72,6 +73,14 @@ function App() {
     setSelectedModel(modelId);
   };
 
+  const handleStopGeneration = () => {
+    if (abortController) {
+      abortController.abort();
+      setAbortController(null);
+      setIsLoading(false);
+    }
+  };
+
   const handleSendMessage = async (content: string) => {
     if (!selectedProvider || !selectedModel) return;
 
@@ -82,6 +91,8 @@ function App() {
 
     setMessages((prev) => [...prev, userMessage]);
     setIsLoading(true);
+    const controller = new AbortController();
+    setAbortController(controller);
 
     try {
       const assistantMessage: Message = {
@@ -102,7 +113,7 @@ function App() {
 
       let newSessionId = currentSessionId;
       
-      for await (const chunk of apiClient.chatStream(request)) {
+      for await (const chunk of apiClient.chatStream(request, controller.signal)) {
         if (chunk.session_id && !newSessionId) {
           newSessionId = chunk.session_id;
           setCurrentSessionId(newSessionId);
@@ -142,17 +153,22 @@ function App() {
           break;
         }
       }
-    } catch (error) {
-      console.error('Chat error:', error);
-      setMessages((prev) => [
-        ...prev.slice(0, -1),
-        {
-          role: 'assistant',
-          content: 'Sorry, an error occurred. Please try again.',
-        },
-      ]);
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        console.log('Generation aborted');
+      } else {
+        console.error('Chat error:', error);
+        setMessages((prev) => [
+          ...prev.slice(0, -1),
+          {
+            role: 'assistant',
+            content: 'Sorry, an error occurred. Please try again.',
+          },
+        ]);
+      }
     } finally {
       setIsLoading(false);
+      setAbortController(null);
       if (currentSessionId) {
         loadSessions();
       }
@@ -200,6 +216,7 @@ function App() {
           isLoading={isLoading}
           isChatActive={messages.length > 0}
           onSendMessage={handleSendMessage}
+          onStopMessage={handleStopGeneration}
         />
       </main>
     </div>

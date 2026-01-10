@@ -6,6 +6,7 @@ interface ChatAreaProps {
   isLoading: boolean;
   isChatActive: boolean;
   onSendMessage: (content: string) => void;
+  onStopMessage: () => void;
 }
 
 function ChatMessage({ message }: { message: Message }) {
@@ -47,6 +48,7 @@ export default function ChatArea({
   isLoading,
   isChatActive,
   onSendMessage,
+  onStopMessage,
 }: ChatAreaProps) {
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -61,8 +63,12 @@ export default function ChatArea({
   }, [messages]);
 
   const handleSubmit = () => {
-    if (input.trim() && !isLoading) {
-      onSendMessage(input.trim());
+    if (isLoading) {
+      onStopMessage();
+      return;
+    }
+    if (input.trim()) {
+      onSendMessage(input);
       setInput('');
     }
   };
@@ -70,7 +76,7 @@ export default function ChatArea({
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSubmit();
+      if (!isLoading) handleSubmit();
     }
   };
 
@@ -133,19 +139,23 @@ export default function ChatArea({
             disabled={isLoading}
           />
           <button
-            className="send-btn"
+            className={`send-btn ${isLoading ? 'stop' : ''}`}
             onClick={handleSubmit}
-            disabled={!input.trim() || isLoading}
+            disabled={!isLoading && !input.trim()}
           >
-            <svg
-              className="icon"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
-            </svg>
+            {isLoading ? (
+              <div className="stop-icon"></div>
+            ) : (
+              <svg
+                className="icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
+              </svg>
+            )}
           </button>
         </div>
       </div>

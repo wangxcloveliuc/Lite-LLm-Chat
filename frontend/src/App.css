@@ -573,7 +573,7 @@ body {
   background: none;
   cursor: pointer;
   padding: 8px;
-  border-radius: 50%;
+  border-radius: 8px; /* Changed to match prototype buttons */
   transition: all 0.2s ease;
   flex-shrink: 0;
 }
@@ -587,6 +587,21 @@ body {
   color: #FFFFFF;
   width: 32px;
   height: 32px;
+}
+
+.send-btn.stop {
+  background-color: #374151; /* Dark grey */
+}
+
+.send-btn.stop:hover {
+  background-color: #1f2937;
+}
+
+.stop-icon {
+  width: 10px;
+  height: 10px;
+  background-color: #ffffff;
+  border-radius: 1px;
 }
 
 .send-btn:hover:not(:disabled) {
