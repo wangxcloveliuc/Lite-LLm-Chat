@@ -110,11 +110,15 @@ function App() {
         }
 
         if (chunk.content) {
+          const incoming = chunk.content;
           setMessages((prev) => {
             const updated = [...prev];
             const lastMsg = updated[updated.length - 1];
             if (lastMsg && lastMsg.role === 'assistant') {
-              lastMsg.content += chunk.content;
+              const newContent = incoming.startsWith(lastMsg.content)
+                ? incoming // provider sends cumulative content
+                : lastMsg.content + incoming; // provider sends deltas
+              updated[updated.length - 1] = { ...lastMsg, content: newContent };
             }
             return updated;
           });

@@ -153,23 +153,28 @@ class APIClient {
 
         buffer += decoder.decode(value, { stream: true });
 
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
+        // Process complete SSE events separated by a blank line (handles \n\n and \r\n\r\n)
+        let boundaryIndex = buffer.search(/\r?\n\r?\n/);
+        while (boundaryIndex !== -1) {
+          const separator = buffer.match(/\r?\n\r?\n/);
+          const sepLength = separator ? separator[0].length : 2;
+          const rawEvent = buffer.slice(0, boundaryIndex).trim();
+          buffer = buffer.slice(boundaryIndex + sepLength);
 
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (!trimmed || !trimmed.startsWith('data:')) continue;
-
-          const dataStr = trimmed.substring(5).trim();
-          if (!dataStr || dataStr === '[DONE]') continue;
-
-          try {
-            const data = JSON.parse(dataStr) as StreamChunk;
-            yield data;
-            if (data.error || data.done) return;
-          } catch (e) {
-            console.error('Failed to parse SSE data:', e);
+          if (rawEvent.startsWith('data:')) {
+            const dataStr = rawEvent.slice(5).trim();
+            if (dataStr && dataStr !== '[DONE]') {
+              try {
+                const data = JSON.parse(dataStr) as StreamChunk;
+                yield data;
+                if (data.error || data.done) return;
+              } catch (e) {
+                console.error('Failed to parse SSE data:', e);
+              }
+            }
           }
+
+          boundaryIndex = buffer.search(/\r?\n\r?\n/);
         }
       }
     } finally {
