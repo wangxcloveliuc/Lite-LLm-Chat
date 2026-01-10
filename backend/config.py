@@ -41,6 +41,12 @@ class Settings(BaseSettings):
     # Grok (xAI, OpenAI-compatible) API
     grok_api_key: Optional[str] = None
     grok_base_url: str = "https://api.x.ai/v1"
+
+    # OpenRouter (OpenAI-compatible) API
+    openrouter_api_key: Optional[str] = None
+    openrouter_base_url: str = "https://openrouter.ai/api/v1"
+    openrouter_http_referer: Optional[str] = None
+    openrouter_x_title: Optional[str] = None
     
     # CORS
     cors_origins: list = ["*"]
