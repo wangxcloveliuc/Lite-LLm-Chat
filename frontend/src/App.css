@@ -317,6 +317,61 @@ body {
   color: #000000;
 }
 
+/* Thought Process */
+.thought-process-container {
+  margin-bottom: 8px;
+  background-color: #F9FAFB;
+  border-left: 3px solid #E5E7EB;
+  border-radius: 4px;
+  overflow: hidden;
+  max-width: 100%;
+}
+
+.thought-process-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  color: #6B7280;
+  transition: background-color 0.2s;
+  text-align: left;
+}
+
+.thought-process-header:hover {
+  background-color: #F3F4F6;
+}
+
+.thought-process-header .chevron-icon {
+  width: 14px;
+  height: 14px;
+  transition: transform 0.2s ease;
+  color: #9CA3AF;
+}
+
+.thought-process-header .chevron-icon.expanded {
+  transform: rotate(90deg);
+}
+
+.thought-process-content {
+  padding: 8px 12px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #4B5563;
+  font-style: italic;
+  white-space: pre-wrap;
+  border-top: 1px solid #F3F4F6;
+}
+
+.message-content {
+  line-height: 1.6;
+}
+
 /* Typing Indicator */
 .typing-indicator {
   display: flex;

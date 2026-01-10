@@ -8,6 +8,40 @@ interface ChatAreaProps {
   onSendMessage: (content: string) => void;
 }
 
+function ChatMessage({ message }: { message: Message }) {
+  const [isThoughtExpanded, setIsThoughtExpanded] = useState(true);
+
+  return (
+    <div className={`message ${message.role}`}>
+      {message.role === 'assistant' && message.thought_process && (
+        <div className="thought-process-container">
+          <button
+            className="thought-process-header"
+            onClick={() => setIsThoughtExpanded(!isThoughtExpanded)}
+          >
+            <svg
+              className={`chevron-icon ${isThoughtExpanded ? 'expanded' : ''}`}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <path d="m9 18 6-6-6-6" />
+            </svg>
+            <span>Thought Process</span>
+          </button>
+          {isThoughtExpanded && (
+            <div className="thought-process-content">
+              {message.thought_process}
+            </div>
+          )}
+        </div>
+      )}
+      <div className="message-content">{message.content}</div>
+    </div>
+  );
+}
+
 export default function ChatArea({
   messages,
   isLoading,
@@ -50,11 +84,9 @@ export default function ChatArea({
 
       <div className={`chat-messages ${isChatActive ? 'visible' : ''}`}>
         {messages.map((message, index) => (
-          <div key={index} className={`message ${message.role}`}>
-            {message.content}
-          </div>
+          <ChatMessage key={index} message={message} />
         ))}
-        {isLoading && (
+        {isLoading && messages.length > 0 && messages[messages.length - 1].role === 'user' && (
           <div className="message assistant">
             <div className="typing-indicator">
               <span></span>

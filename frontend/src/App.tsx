@@ -124,6 +124,19 @@ function App() {
           });
         }
 
+        if (chunk.reasoning) {
+          const reasoningDelta = chunk.reasoning;
+          setMessages((prev) => {
+            const updated = [...prev];
+            const lastMsg = updated[updated.length - 1];
+            if (lastMsg && lastMsg.role === 'assistant') {
+              const newReasoning = (lastMsg.thought_process || '') + reasoningDelta;
+              updated[updated.length - 1] = { ...lastMsg, thought_process: newReasoning };
+            }
+            return updated;
+          });
+        }
+
         if (chunk.error) {
           console.error('Stream error:', chunk.error);
           break;
