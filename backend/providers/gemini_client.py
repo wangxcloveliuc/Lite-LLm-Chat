@@ -26,6 +26,7 @@ class GeminiClient:
             http_options = types.HttpOptions(
                 client_args={"proxy": settings.http_proxy},
                 async_client_args={"proxy": settings.http_proxy},
+                timeout=settings.provider_timeout,
             )
 
         self._types = types

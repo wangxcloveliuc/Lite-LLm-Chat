@@ -21,6 +21,7 @@ class GrokClient:
             api_key=settings.grok_api_key,
             base_url=settings.grok_base_url,
             http_client=http_client,
+            timeout=settings.provider_timeout,
         )
 
     async def stream_chat(

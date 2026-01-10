@@ -21,6 +21,7 @@ class MistralClient:
             api_key=settings.mistral_api_key,
             base_url=settings.mistral_base_url,
             http_client=http_client,
+            timeout=settings.provider_timeout,
         )
 
     def _extract_reasoning_and_text(self, content_obj) -> Tuple[str, str]:

@@ -21,6 +21,7 @@ class CerebrasClient:
             api_key=settings.cerebras_api_key,
             base_url=settings.cerebras_base_url,
             http_client=http_client,
+            timeout=settings.provider_timeout,
         )
 
     def _extract_reasoning(self, msg_or_delta) -> str:

@@ -28,6 +28,7 @@ class GroqClient:
             api_key=settings.groq_api_key,
             base_url=settings.groq_base_url,
             http_client=http_client,
+            timeout=settings.provider_timeout,
         )
 
     async def stream_chat(

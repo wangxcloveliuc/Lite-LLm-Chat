@@ -3,7 +3,7 @@ FastAPI Backend for Lite-LLM-Chat
 """
 import asyncio
 
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
@@ -228,6 +228,32 @@ async def delete_session(session_id: int, db: Session = Depends(get_db)):
     db.commit()
 
 
+@app.delete(f"{settings.api_prefix}/sessions/{{session_id}}/truncate/{{message_id}}", status_code=status.HTTP_204_NO_CONTENT)
+async def truncate_session(session_id: int, message_id: int, db: Session = Depends(get_db)):
+    """
+    Delete all messages in a session starting from a specific message ID (inclusive)
+    
+    Args:
+        session_id: The session ID
+        message_id: The ID of the message from which to start deleting
+    """
+    session = db.query(ChatSession).filter(ChatSession.id == session_id).first()
+    
+    if not session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Session {session_id} not found"
+        )
+    
+    db.query(ChatMessage).filter(
+        ChatMessage.session_id == session_id,
+        ChatMessage.id >= message_id
+    ).delete()
+    
+    session.updated_at = datetime.now(timezone.utc)
+    db.commit()
+
+
 @app.delete(f"{settings.api_prefix}/sessions", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_all_sessions(db: Session = Depends(get_db)):
     """
@@ -241,7 +267,7 @@ async def delete_all_sessions(db: Session = Depends(get_db)):
 # ==================== Chat Endpoints ====================
 
 @app.post(f"{settings.api_prefix}/chat")
-async def chat_completion(request: ChatRequest, db: Session = Depends(get_db)):
+async def chat_completion(chat_request: ChatRequest, request: Request, db: Session = Depends(get_db)):
     """
     Chat completion endpoint with streaming support
     
@@ -249,26 +275,26 @@ async def chat_completion(request: ChatRequest, db: Session = Depends(get_db)):
         request: Chat request data
     """
     # Get or create session
-    if request.session_id:
-        session = db.query(ChatSession).filter(ChatSession.id == request.session_id).first()
+    if chat_request.session_id:
+        session = db.query(ChatSession).filter(ChatSession.id == chat_request.session_id).first()
         if not session:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Session {request.session_id} not found"
+                detail=f"Session {chat_request.session_id} not found"
             )
     else:
         # Create new session
         session = ChatSession(
-            title=request.title or f"Chat {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M')}",
-            provider=request.provider,
-            model=request.model
+            title=chat_request.title or f"Chat {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M')}",
+            provider=chat_request.provider,
+            model=chat_request.model
         )
         db.add(session)
         db.commit()
         db.refresh(session)
 
-    provider_id = request.message_provider or request.provider
-    model_id = request.message_model or request.model
+    provider_id = chat_request.message_provider or chat_request.provider
+    model_id = chat_request.message_model or chat_request.model
     provider_client = get_provider(provider_id)
     if not provider_client:
         raise HTTPException(
@@ -285,7 +311,7 @@ async def chat_completion(request: ChatRequest, db: Session = Depends(get_db)):
     )
 
     # Prepare incoming messages (only user/system).
-    incoming_tuples = [(msg.role, msg.content) for msg in request.messages if msg.role in ("user", "system")]
+    incoming_tuples = [(msg.role, msg.content) for msg in chat_request.messages if msg.role in ("user", "system")]
 
     # Build API messages from full context (existing + deduped incoming) but DO NOT persist incoming messages yet
     api_messages = [{"role": m.role, "content": m.content} for m in existing_messages] + [{"role": r, "content": c} for r, c in incoming_tuples]
@@ -297,7 +323,7 @@ async def chat_completion(request: ChatRequest, db: Session = Depends(get_db)):
     ]
 
     # Stream response
-    if request.stream:
+    if chat_request.stream:
         async def generate():
             """Generator for streaming response"""
             # Send session ID first
@@ -309,28 +335,59 @@ async def chat_completion(request: ChatRequest, db: Session = Depends(get_db)):
             full_reasoning = ""
             failed = False
             try:
-                async for chunk in provider_client.stream_chat(
+                stream = provider_client.stream_chat(
                     model=model_id,
                     messages=api_messages,
-                    temperature=request.temperature,
-                    max_tokens=request.max_tokens
-                ):
-                    yield chunk
-                    await asyncio.sleep(0)
-                    # Extract content and reasoning for saving and detect errors
-                    if chunk.startswith("data: "):
+                    temperature=chat_request.temperature,
+                    max_tokens=chat_request.max_tokens
+                )
+
+                client_gone = False
+                try:
+                    while True:
+                        # Poll for client disconnects while waiting for provider chunks
+                        if await request.is_disconnected():
+                            client_gone = True
+                            break
+
                         try:
-                            data = json.loads(chunk[6:])
-                            if "content" in data:
-                                full_response += data["content"]
-                            if "reasoning" in data:
-                                full_reasoning += data["reasoning"]
-                            if "error" in data:
-                                failed = True
-                                # stop processing further chunks
-                                break
-                        except:
+                            chunk = await asyncio.wait_for(stream.__anext__(), timeout=0.5)
+                        except StopAsyncIteration:
+                            break
+                        except asyncio.TimeoutError:
+                            continue
+                        except asyncio.CancelledError:
+                            # client cancelled; stop processing and do not persist
+                            return
+
+                        yield chunk
+                        await asyncio.sleep(0)
+                        # Extract content and reasoning for saving and detect errors
+                        if chunk.startswith("data: "):
+                            try:
+                                data = json.loads(chunk[6:])
+                                if "content" in data:
+                                    full_response += data["content"]
+                                if "reasoning" in data:
+                                    full_reasoning += data["reasoning"]
+                                if "error" in data:
+                                    failed = True
+                                    # stop processing further chunks
+                                    break
+                            except:
+                                pass
+                finally:
+                    # Ensure provider stream is closed when client disconnects or loop ends
+                    aclose = getattr(stream, "aclose", None)
+                    if callable(aclose):
+                        try:
+                            await aclose()
+                        except Exception:
                             pass
+
+                if client_gone:
+                    return
+
             except Exception as e:
                 # Stream-level exception: notify client, do not persist
                 yield f"data: {json.dumps({'error': str(e)})}\n\n"
@@ -374,8 +431,8 @@ async def chat_completion(request: ChatRequest, db: Session = Depends(get_db)):
             response_content, reasoning_content = await provider_client.chat(
                 model=model_id,
                 messages=api_messages,
-                temperature=request.temperature,
-                max_tokens=request.max_tokens
+                temperature=chat_request.temperature,
+                max_tokens=chat_request.max_tokens
             )
         except Exception as e:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Provider error: {str(e)}")

@@ -28,6 +28,7 @@ class OpenRouterClient:
             base_url=settings.openrouter_base_url,
             default_headers=default_headers or None,
             http_client=http_client,
+            timeout=settings.provider_timeout,
         )
 
     def _extract_reasoning(self, msg_or_delta) -> str:
