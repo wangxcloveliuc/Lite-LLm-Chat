@@ -39,6 +39,14 @@ export default function Sidebar({
     setActiveMenuId(null);
   };
 
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (editingId !== null && inputRef.current) {
+      inputRef.current.select();
+    }
+  }, [editingId]);
+
   const handleRenameSubmit = (e: React.FormEvent, sessionId: number) => {
     e.preventDefault();
     if (editTitle.trim()) {
@@ -75,6 +83,7 @@ export default function Sidebar({
                 onSubmit={(e) => handleRenameSubmit(e, session.id)}
               >
                 <input
+                  ref={inputRef}
                   autoFocus
                   className="rename-input"
                   value={editTitle}

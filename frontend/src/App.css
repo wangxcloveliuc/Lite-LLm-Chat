@@ -188,18 +188,22 @@ body {
 
 /* Rename Form */
 .rename-form {
-  padding: 8px;
+  padding: 0;
   width: 100%;
 }
 
 .rename-input {
   width: 100%;
-  padding: 8px 8px;
-  border: 1px solid #3B82F6;
-  border-radius: 4px;
+  padding: 12px 12px 12px 8px;
+  border: none;
+  border-radius: 8px;
   font-size: 14px;
+  font-weight: 500;
   outline: none;
-  background-color: #FFFFFF;
+  background-color: #F3F4F6;
+  color: #374151;
+  height: 44px;
+  box-sizing: border-box;
 }
 
 /* Main Content */
