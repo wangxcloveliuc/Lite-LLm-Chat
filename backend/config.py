@@ -51,6 +51,10 @@ class Settings(BaseSettings):
     # Gemini (Google GenAI SDK)
     gemini_api_key: Optional[str] = None
 
+    # Cerebras (OpenAI-compatible) API
+    cerebras_api_key: Optional[str] = None
+    cerebras_base_url: str = "https://api.cerebras.ai/v1"
+
     # CORS
     cors_origins: list = ["*"]
     
