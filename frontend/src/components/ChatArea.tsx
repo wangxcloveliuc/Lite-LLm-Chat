@@ -74,6 +74,13 @@ export default function ChatArea({
     }
   };
 
+  const lastMessage = messages[messages.length - 1];
+  const showTypingIndicator = isLoading && (
+    !lastMessage || 
+    lastMessage.role === 'user' || 
+    (lastMessage.role === 'assistant' && !lastMessage.content && !lastMessage.thought_process)
+  );
+
   return (
     <div className="central-interface">
       {!isChatActive && (
@@ -83,10 +90,14 @@ export default function ChatArea({
       )}
 
       <div className={`chat-messages ${isChatActive ? 'visible' : ''}`}>
-        {messages.map((message, index) => (
-          <ChatMessage key={index} message={message} />
-        ))}
-        {isLoading && messages.length > 0 && messages[messages.length - 1].role === 'user' && (
+        {messages.map((message, index) => {
+          const isLast = index === messages.length - 1;
+          if (showTypingIndicator && isLast && message.role === 'assistant' && !message.content && !message.thought_process) {
+            return null;
+          }
+          return <ChatMessage key={index} message={message} />;
+        })}
+        {showTypingIndicator && (
           <div className="message assistant">
             <div className="typing-indicator">
               <span></span>
