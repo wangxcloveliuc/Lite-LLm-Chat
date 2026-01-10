@@ -159,6 +159,23 @@ function App() {
     }
   };
 
+  const handleRenameSession = async (sessionId: number, newTitle: string) => {
+    const success = await apiClient.updateSession(sessionId, newTitle);
+    if (success) {
+      loadSessions();
+    }
+  };
+
+  const handleDeleteSession = async (sessionId: number) => {
+    const success = await apiClient.deleteSession(sessionId);
+    if (success) {
+      if (currentSessionId === sessionId) {
+        handleNewChat();
+      }
+      loadSessions();
+    }
+  };
+
   return (
     <div className="app-container">
       <Sidebar
@@ -166,6 +183,8 @@ function App() {
         currentSessionId={currentSessionId}
         onNewChat={handleNewChat}
         onSessionSelect={handleSessionSelect}
+        onRenameSession={handleRenameSession}
+        onDeleteSession={handleDeleteSession}
       />
       <main className="main-content">
         <Header
