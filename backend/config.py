@@ -47,7 +47,10 @@ class Settings(BaseSettings):
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
     openrouter_http_referer: Optional[str] = None
     openrouter_x_title: Optional[str] = None
-    
+
+    # Gemini (Google GenAI SDK)
+    gemini_api_key: Optional[str] = None
+
     # CORS
     cors_origins: list = ["*"]
     
