@@ -98,13 +98,13 @@ function ChatMessage({ message, index, onEdit }: { message: Message; index: numb
             title={copied ? "Copied!" : "Copy message"}
           >
             {copied ? (
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M20 6L9 17l-5-5" />
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M6 12L10 16L18 8" />
               </svg>
             ) : (
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="9" y="2" width="13" height="13" rx="2" />
-                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="8" y="4" width="12" height="12" rx="2.5" />
+                <rect x="4" y="8" width="12" height="12" rx="2.5" fill="white" stroke="currentColor" />
               </svg>
             )}
           </button>
@@ -113,8 +113,9 @@ function ChatMessage({ message, index, onEdit }: { message: Message; index: numb
             onClick={() => setIsEditing(true)}
             title="Edit message"
           >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M14.5 3.5L19 8L7 20H4V17L14.5 3.5Z" />
+              <path d="M13.5 4.5L18 9" />
             </svg>
           </button>
         </div>
