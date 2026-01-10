@@ -12,6 +12,8 @@ class Settings(BaseSettings):
     app_name: str = "Lite-LLM-Chat Backend"
     app_version: str = "1.0.0"
     api_prefix: str = "/api/v1"
+
+    http_proxy: Optional[str] = None
     
     # Database
     database_url: str = "sqlite:///./chat_history.db"
@@ -27,6 +29,10 @@ class Settings(BaseSettings):
     # SiliconFlow (OpenAI-compatible) API
     siliconflow_api_key: Optional[str] = None
     siliconflow_base_url: str = "https://api.siliconflow.cn/v1"
+
+    # Groq (OpenAI-compatible) API
+    groq_api_key: Optional[str] = None
+    groq_base_url: str = "https://api.groq.com/openai/v1"
     
     # CORS
     cors_origins: list = ["*"]
