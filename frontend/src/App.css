@@ -449,6 +449,7 @@ body {
 
 .message-container.assistant {
   align-self: flex-start;
+  min-width: 80%;
 }
 
 .message-actions {
@@ -502,6 +503,15 @@ body {
 
 .action-btn.success svg {
   color: #374151; /* Dark gray checkmark as per description */
+}
+
+.message-model-info {
+  margin-left: auto;
+  font-size: 13px;
+  color: #6B7280;
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
 }
 
 /* Message Edit UI */

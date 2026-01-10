@@ -161,6 +161,9 @@ function ChatMessage({
               <path d="M3.51 15a9 9 0 0 0 14.85 4.36L23 14" />
             </svg>
           </button>
+          {message.provider && message.model && (
+            <span className="message-model-info">{message.provider}/{message.model}</span>
+          )}
         </div>
       )}
     </div>
