@@ -14,6 +14,8 @@ class Settings(BaseSettings):
     api_prefix: str = "/api/v1"
 
     http_proxy: Optional[str] = None
+    # Outbound request timeout (seconds) for LLM provider calls
+    provider_timeout: float = 20.0
     
     # Database
     database_url: str = "sqlite:///./chat_history.db"

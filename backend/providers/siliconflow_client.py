@@ -37,6 +37,7 @@ class SiliconFlowClient:
         self.client = OpenAI(
             api_key=settings.siliconflow_api_key,
             base_url=settings.siliconflow_base_url,
+            timeout=settings.provider_timeout,
         )
 
     async def stream_chat(

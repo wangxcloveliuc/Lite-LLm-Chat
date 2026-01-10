@@ -16,7 +16,8 @@ class DeepSeekClient:
     def __init__(self):
         self.client = OpenAI(
             api_key=settings.deepseek_api_key,
-            base_url=settings.deepseek_base_url
+            base_url=settings.deepseek_base_url,
+            timeout=settings.provider_timeout,
         )
 
     async def stream_chat(

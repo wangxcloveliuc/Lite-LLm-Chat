@@ -21,6 +21,7 @@ class DoubaoClient:
         self.client = OpenAI(
             api_key=settings.doubao_api_key,
             base_url=settings.doubao_base_url,
+            timeout=settings.provider_timeout,
         )
 
     async def stream_chat(
