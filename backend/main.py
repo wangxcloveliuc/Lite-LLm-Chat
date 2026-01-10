@@ -228,6 +228,32 @@ async def delete_session(session_id: int, db: Session = Depends(get_db)):
     db.commit()
 
 
+@app.delete(f"{settings.api_prefix}/sessions/{{session_id}}/truncate/{{message_id}}", status_code=status.HTTP_204_NO_CONTENT)
+async def truncate_session(session_id: int, message_id: int, db: Session = Depends(get_db)):
+    """
+    Delete all messages in a session starting from a specific message ID (inclusive)
+    
+    Args:
+        session_id: The session ID
+        message_id: The ID of the message from which to start deleting
+    """
+    session = db.query(ChatSession).filter(ChatSession.id == session_id).first()
+    
+    if not session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Session {session_id} not found"
+        )
+    
+    db.query(ChatMessage).filter(
+        ChatMessage.session_id == session_id,
+        ChatMessage.id >= message_id
+    ).delete()
+    
+    session.updated_at = datetime.now(timezone.utc)
+    db.commit()
+
+
 @app.delete(f"{settings.api_prefix}/sessions", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_all_sessions(db: Session = Depends(get_db)):
     """

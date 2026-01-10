@@ -130,7 +130,16 @@ class APIClient {
       return false;
     }
   }
-
+  async truncateSession(sessionId: number, messageId: number): Promise<boolean> {
+    try {
+      const response = await fetch(this.url(`/sessions/${sessionId}/truncate/${messageId}`), {
+        method: 'DELETE',
+      });
+      return response.status === 204;
+    } catch {
+      return false;
+    }
+  }
   async *chatStream(
     request: ChatRequest,
     signal?: AbortSignal

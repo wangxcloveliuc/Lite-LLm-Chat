@@ -417,7 +417,6 @@ body {
 
 /* Message Bubble */
 .message {
-  max-width: 80%;
   padding: 6px 16px;
   border-radius: 20px;
   font-size: 16px;
@@ -437,6 +436,122 @@ body {
   align-self: flex-start;
   background-color: transparent;
   color: #000000;
+}
+
+/* Message hover actions */
+.message-container {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  max-width: 80%;
+  align-self: flex-end;
+}
+
+.message-container.assistant {
+  align-self: flex-start;
+}
+
+.message-actions {
+  display: flex;
+  gap: 4px;
+  margin-top: 4px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  justify-content: flex-end;
+  height: 28px;
+}
+
+.message-container:hover .message-actions {
+  opacity: 1;
+}
+
+.action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  color: #6B7280;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.action-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.action-btn:hover {
+  background-color: #F3F4F6;
+  color: #111827;
+}
+
+.action-btn.success {
+  color: #111827;
+  background-color: #E5E7EB;
+}
+
+/* Message Edit UI */
+.message-edit-container {
+  width: 100%;
+  background-color: #F3F4F6;
+  border-radius: 24px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-self: stretch;
+}
+
+.message-edit-input {
+  width: 100%;
+  border: none;
+  background: transparent;
+  resize: none;
+  font-family: inherit;
+  font-size: 16px;
+  line-height: 1.6;
+  outline: none;
+  color: #000000;
+  padding: 0;
+  min-height: 24px;
+}
+
+.edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.edit-btn {
+  padding: 8px 20px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.edit-btn.cancel {
+  background-color: #FFFFFF;
+  color: #000000;
+  border: 1px solid #E5E7EB;
+}
+
+.edit-btn.cancel:hover {
+  background-color: #F9FAFB;
+}
+
+.edit-btn.send {
+  background-color: #000000;
+  color: #FFFFFF;
+  border: none;
+}
+
+.edit-btn.send:hover {
+  background-color: #1F2937;
 }
 
 /* Thought Process */

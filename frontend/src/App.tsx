@@ -81,6 +81,13 @@ function App() {
     }
   };
 
+  const refreshMessages = async (sessionId: number) => {
+    const session = await apiClient.getSession(sessionId);
+    if (session?.messages) {
+      setMessages(session.messages);
+    }
+  };
+
   const handleSendMessage = async (content: string) => {
     if (!selectedProvider || !selectedModel) return;
 
@@ -94,6 +101,7 @@ function App() {
     const controller = new AbortController();
     setAbortController(controller);
 
+    let newSessionId = currentSessionId;
     try {
       const assistantMessage: Message = {
         role: 'assistant',
@@ -111,8 +119,6 @@ function App() {
         title: currentSessionId ? undefined : content.substring(0, 50),
       };
 
-      let newSessionId = currentSessionId;
-      
       for await (const chunk of apiClient.chatStream(request, controller.signal)) {
         if (chunk.session_id && !newSessionId) {
           newSessionId = chunk.session_id;
@@ -169,8 +175,10 @@ function App() {
     } finally {
       setIsLoading(false);
       setAbortController(null);
-      if (currentSessionId) {
+      const sessionIdToRefresh = newSessionId || currentSessionId;
+      if (sessionIdToRefresh) {
         loadSessions();
+        await refreshMessages(sessionIdToRefresh);
       }
     }
   };
@@ -179,6 +187,33 @@ function App() {
     const success = await apiClient.updateSession(sessionId, newTitle);
     if (success) {
       loadSessions();
+    }
+  };
+
+  const handleEditMessage = async (index: number, content: string) => {
+    const messageToEdit = messages[index];
+    if (!messageToEdit || messageToEdit.role !== 'user') return;
+
+
+    if (currentSessionId) {
+      // Stop any current generation
+      handleStopGeneration();
+      
+      // Truncate the session in the backend when we have a persisted message id
+      if (messageToEdit.id) {
+        await apiClient.truncateSession(currentSessionId, messageToEdit.id);
+      }
+      
+      // Update local state: remove everything from this point onwards
+      setMessages(prev => prev.slice(0, index));
+      
+      // Trigger new message sending
+      handleSendMessage(content);
+    } else {
+      // New chat, haven't saved to DB yet
+      handleStopGeneration();
+      setMessages(prev => prev.slice(0, index));
+      handleSendMessage(content);
     }
   };
 
@@ -217,6 +252,7 @@ function App() {
           isChatActive={messages.length > 0}
           onSendMessage={handleSendMessage}
           onStopMessage={handleStopGeneration}
+          onEditMessage={handleEditMessage}
         />
       </main>
     </div>

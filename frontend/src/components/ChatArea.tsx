@@ -7,38 +7,118 @@ interface ChatAreaProps {
   isChatActive: boolean;
   onSendMessage: (content: string) => void;
   onStopMessage: () => void;
+  onEditMessage: (index: number, content: string) => void;
 }
 
-function ChatMessage({ message }: { message: Message }) {
+function ChatMessage({ message, index, onEdit }: { message: Message; index: number; onEdit: (index: number, content: string) => void }) {
   const [isThoughtExpanded, setIsThoughtExpanded] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editContent, setEditContent] = useState(message.content);
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(message.content);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleCancel = () => {
+    setIsEditing(false);
+    setEditContent(message.content);
+  };
+
+  const handleSend = () => {
+    if (editContent.trim()) {
+      onEdit(index, editContent);
+      setIsEditing(false);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    } else if (e.key === 'Escape') {
+      handleCancel();
+    }
+  };
+
+  if (isEditing) {
+    return (
+      <div className="message-edit-container">
+        <textarea
+          className="message-edit-input"
+          value={editContent}
+          onChange={(e) => setEditContent(e.target.value)}
+          onKeyDown={handleKeyDown}
+          autoFocus
+        />
+        <div className="edit-actions">
+          <button className="edit-btn cancel" onClick={handleCancel}>Cancel</button>
+          <button className="edit-btn send" onClick={handleSend}>Send</button>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className={`message ${message.role}`}>
-      {message.role === 'assistant' && message.thought_process && (
-        <div className="thought-process-container">
-          <button
-            className="thought-process-header"
-            onClick={() => setIsThoughtExpanded(!isThoughtExpanded)}
-          >
-            <svg
-              className={`chevron-icon ${isThoughtExpanded ? 'expanded' : ''}`}
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
+    <div className={`message-container ${message.role}`}>
+      <div className={`message ${message.role}`}>
+        {message.role === 'assistant' && message.thought_process && (
+          <div className="thought-process-container">
+            <button
+              className="thought-process-header"
+              onClick={() => setIsThoughtExpanded(!isThoughtExpanded)}
             >
-              <path d="m9 18 6-6-6-6" />
-            </svg>
-            <span>Thought Process</span>
+              <svg
+                className={`chevron-icon ${isThoughtExpanded ? 'expanded' : ''}`}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <path d="m9 18 6-6-6-6" />
+              </svg>
+              <span>Thought Process</span>
+            </button>
+            {isThoughtExpanded && (
+              <div className="thought-process-content">
+                {message.thought_process}
+              </div>
+            )}
+          </div>
+        )}
+        <div className="message-content">{message.content}</div>
+      </div>
+      {message.role === 'user' && (
+        <div className="message-actions">
+          <button 
+            className={`action-btn ${copied ? 'success' : ''}`} 
+            onClick={handleCopy}
+            title={copied ? "Copied!" : "Copy message"}
+          >
+            {copied ? (
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20 6L9 17l-5-5" />
+              </svg>
+            ) : (
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="9" y="2" width="13" height="13" rx="2" />
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+              </svg>
+            )}
           </button>
-          {isThoughtExpanded && (
-            <div className="thought-process-content">
-              {message.thought_process}
-            </div>
-          )}
+          <button 
+            className="action-btn" 
+            onClick={() => setIsEditing(true)}
+            title="Edit message"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
+            </svg>
+          </button>
         </div>
       )}
-      <div className="message-content">{message.content}</div>
     </div>
   );
 }
@@ -49,6 +129,7 @@ export default function ChatArea({
   isChatActive,
   onSendMessage,
   onStopMessage,
+  onEditMessage,
 }: ChatAreaProps) {
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -101,7 +182,7 @@ export default function ChatArea({
           if (showTypingIndicator && isLast && message.role === 'assistant' && !message.content && !message.thought_process) {
             return null;
           }
-          return <ChatMessage key={index} message={message} />;
+          return <ChatMessage key={index} message={message} index={index} onEdit={onEditMessage} />;
         })}
         {showTypingIndicator && (
           <div className="message assistant">
