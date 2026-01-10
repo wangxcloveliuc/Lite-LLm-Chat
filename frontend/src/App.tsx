@@ -217,6 +217,37 @@ function App() {
     }
   };
 
+  const handleRefreshMessage = async (index: number) => {
+    const assistantMessage = messages[index];
+    if (!assistantMessage || assistantMessage.role !== 'assistant') return;
+
+    // Find the corresponding user message (should be at index - 1)
+    const userMessageIndex = index - 1;
+    if (userMessageIndex < 0) return;
+    const userMessage = messages[userMessageIndex];
+    if (!userMessage || userMessage.role !== 'user') return;
+
+    if (currentSessionId) {
+      handleStopGeneration();
+      
+      // Truncate the session in the backend starting from the user message to avoid duplication
+      if (userMessage.id) {
+        await apiClient.truncateSession(currentSessionId, userMessage.id);
+      }
+      
+      // Update local state: remove the user message and everything after it
+      setMessages(prev => prev.slice(0, userMessageIndex));
+      
+      // Re-send the user message content - this will re-add it to the state and backend
+      handleSendMessage(userMessage.content);
+    } else {
+      // New chat, haven't saved to DB yet
+      handleStopGeneration();
+      setMessages(prev => prev.slice(0, userMessageIndex));
+      handleSendMessage(userMessage.content);
+    }
+  };
+
   const handleDeleteSession = async (sessionId: number) => {
     const success = await apiClient.deleteSession(sessionId);
     if (success) {
@@ -253,6 +284,7 @@ function App() {
           onSendMessage={handleSendMessage}
           onStopMessage={handleStopGeneration}
           onEditMessage={handleEditMessage}
+          onRefreshMessage={handleRefreshMessage}
         />
       </main>
     </div>

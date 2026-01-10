@@ -8,9 +8,20 @@ interface ChatAreaProps {
   onSendMessage: (content: string) => void;
   onStopMessage: () => void;
   onEditMessage: (index: number, content: string) => void;
+  onRefreshMessage: (index: number) => void;
 }
 
-function ChatMessage({ message, index, onEdit }: { message: Message; index: number; onEdit: (index: number, content: string) => void }) {
+function ChatMessage({ 
+  message, 
+  index, 
+  onEdit, 
+  onRefresh 
+}: { 
+  message: Message; 
+  index: number; 
+  onEdit: (index: number, content: string) => void;
+  onRefresh: (index: number) => void;
+}) {
   const [isThoughtExpanded, setIsThoughtExpanded] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(message.content);
@@ -120,6 +131,38 @@ function ChatMessage({ message, index, onEdit }: { message: Message; index: numb
           </button>
         </div>
       )}
+      {message.role === 'assistant' && (
+        <div className="message-actions assistant-visible">
+          <button 
+            className={`action-btn ${copied ? 'success' : ''}`} 
+            onClick={handleCopy}
+            title={copied ? "Copied!" : "Copy message"}
+          >
+            {copied ? (
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M6 12L10 16L18 8" />
+              </svg>
+            ) : (
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="8" y="4" width="12" height="12" rx="2.5" />
+                <rect x="4" y="8" width="12" height="12" rx="2.5" fill="white" stroke="currentColor" />
+              </svg>
+            )}
+          </button>
+          <button 
+            className="action-btn" 
+            onClick={() => onRefresh(index)}
+            title="Refresh response"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M1 4v6h6" />
+              <path d="M23 20v-6h-6" />
+              <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10" />
+              <path d="M3.51 15a9 9 0 0 0 14.85 4.36L23 14" />
+            </svg>
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -131,6 +174,7 @@ export default function ChatArea({
   onSendMessage,
   onStopMessage,
   onEditMessage,
+  onRefreshMessage,
 }: ChatAreaProps) {
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -183,7 +227,7 @@ export default function ChatArea({
           if (showTypingIndicator && isLast && message.role === 'assistant' && !message.content && !message.thought_process) {
             return null;
           }
-          return <ChatMessage key={index} message={message} index={index} onEdit={onEditMessage} />;
+          return <ChatMessage key={index} message={message} index={index} onEdit={onEditMessage} onRefresh={onRefreshMessage} />;
         })}
         {showTypingIndicator && (
           <div className="message assistant">
