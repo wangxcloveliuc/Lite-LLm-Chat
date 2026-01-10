@@ -841,3 +841,92 @@ body {
 .text-input:focus {
   outline: none;
 }
+
+/* Markdown Styles */
+.message-content {
+  line-height: 1.6;
+  font-size: 15px;
+  white-space: normal;
+}
+
+.message-content p {
+  margin-bottom: 8px;
+}
+
+.message-content p:last-child {
+  margin-bottom: 0;
+}
+
+.message-content ul, 
+.message-content ol {
+  margin-top: 8px;
+  margin-bottom: 8px;
+  padding-left: 24px;
+}
+
+.message-content li {
+  margin-bottom: 4px;
+}
+
+.message-content h1,
+.message-content h2,
+.message-content h3,
+.message-content h4 {
+  margin-top: 16px;
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.message-content h1 { font-size: 1.4em; }
+.message-content h2 { font-size: 1.3em; }
+.message-content h3 { font-size: 1.2em; }
+
+.message-content code {
+  background-color: #F3F4F6;
+  padding: 2px 4px;
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.9em;
+}
+
+.message-content pre {
+  margin: 12px 0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.message-content blockquote {
+  border-left: 4px solid #E5E7EB;
+  padding-left: 12px;
+  color: #6B7280;
+  font-style: italic;
+  margin: 12px 0;
+}
+
+.message-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0;
+}
+
+.message-content th, 
+.message-content td {
+  border: 1px solid #E5E7EB;
+  padding: 8px 12px;
+  text-align: left;
+}
+
+.message-content th {
+  background-color: #F9FAFB;
+}
+
+/* Thought Process Markdown Styles */
+.thought-process-content {
+  font-size: 14px;
+  line-height: 1.5;
+  color: #6B7280;
+}
+
+.thought-process-content p {
+  margin-bottom: 8px;
+}

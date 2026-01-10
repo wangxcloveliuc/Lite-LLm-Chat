@@ -1,4 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import remarkBreaks from 'remark-breaks';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import type { Message } from '../types';
 
 interface ChatAreaProps {
@@ -94,12 +99,39 @@ function ChatMessage({
             </button>
             {isThoughtExpanded && (
               <div className="thought-process-content">
-                {message.thought_process}
+                <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>
+                  {message.thought_process}
+                </ReactMarkdown>
               </div>
             )}
           </div>
         )}
-        <div className="message-content">{message.content}</div>
+        <div className="message-content">
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm, remarkBreaks]}
+            components={{
+              code({ node, inline, className, children, ...props }: any) {
+                const match = /language-(\w+)/.exec(className || '');
+                return !inline && match ? (
+                  <SyntaxHighlighter
+                    style={oneLight}
+                    language={match[1]}
+                    PreTag="div"
+                    {...props}
+                  >
+                    {String(children).replace(/\n$/, '')}
+                  </SyntaxHighlighter>
+                ) : (
+                  <code className={className} {...props}>
+                    {children}
+                  </code>
+                );
+              },
+            }}
+          >
+            {message.content}
+          </ReactMarkdown>
+        </div>
       </div>
       {message.role === 'user' && (
         <div className="message-actions">
