@@ -37,6 +37,10 @@ class Settings(BaseSettings):
     # Mistral (OpenAI-compatible) API
     mistral_api_key: Optional[str] = None
     mistral_base_url: str = "https://api.mistral.ai/v1"
+
+    # Grok (xAI, OpenAI-compatible) API
+    grok_api_key: Optional[str] = None
+    grok_base_url: str = "https://api.x.ai/v1"
     
     # CORS
     cors_origins: list = ["*"]
