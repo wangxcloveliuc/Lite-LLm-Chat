@@ -12,12 +12,35 @@ except (ImportError, ValueError):
 
 
 class GeminiClient(BaseClient):
+    # Models that should include thinking_config
+    _THINKING_MODELS = [
+        "gemini-2.5-flash",
+        "gemini-2.5-pro",
+        "gemini-2.5-flash-preview-tts",
+        "gemini-2.5-pro-preview-tts",
+        "gemini-flash-latest",
+        "gemini-flash-lite-latest",
+        "gemini-pro-latest",
+        "gemini-2.5-flash-lite",
+        "gemini-2.5-flash-image-preview",
+        "gemini-2.5-flash-image",
+        "gemini-2.5-flash-preview-09-2025",
+        "gemini-2.5-flash-lite-preview-09-2025",
+        "gemini-3-pro-preview",
+        "gemini-3-flash-preview",
+        "gemini-3-pro-image-preview",
+        "nano-banana-pro-preview",
+        "gemini-2.5-computer-use-preview-10-2025",
+        "deep-research-pro-preview-12-2025",
+    ]
+
     def __init__(self):
         http_options = None
         if settings.http_proxy:
             http_options = types.HttpOptions(
                 client_args={"proxy": settings.http_proxy},
                 async_client_args={"proxy": settings.http_proxy},
+                timeout=settings.provider_timeout * 1000 if settings.provider_timeout else None,
             )
 
         self._types = types
@@ -25,6 +48,9 @@ class GeminiClient(BaseClient):
             api_key=settings.gemini_api_key,
             http_options=http_options,
         )
+
+    def _should_enable_thinking(self, model: str) -> bool:
+        return any(model.startswith(prefix) for prefix in self._THINKING_MODELS)
 
 
     def _messages_to_contents_and_system(self, messages: List[Dict[str, str]]):
@@ -109,14 +135,22 @@ class GeminiClient(BaseClient):
         try:
             contents, system_instruction = self._messages_to_contents_and_system(messages)
 
+            # Only enable thinking for specific models
+            enable_thinking = self._should_enable_thinking(model)
+            thinking_cfg = (
+                self._types.ThinkingConfig(
+                    include_thoughts=True,
+                    thinking_budget=-1,  # Unlimited thinking budget
+                )
+                if enable_thinking
+                else None
+            )
+
             config = self._types.GenerateContentConfig(
                 temperature=temperature,
                 max_output_tokens=max_tokens,
                 system_instruction=system_instruction,
-                thinking_config=self._types.ThinkingConfig(
-                    include_thoughts=True,
-                    thinking_budget=-1,  # Unlimited thinking budget
-                ),
+                thinking_config=thinking_cfg,
             )
 
             # The SDK provides async streaming under client.aio
@@ -150,14 +184,22 @@ class GeminiClient(BaseClient):
         try:
             contents, system_instruction = self._messages_to_contents_and_system(messages)
 
+            # Only enable thinking for specific models
+            enable_thinking = self._should_enable_thinking(model)
+            thinking_cfg = (
+                self._types.ThinkingConfig(
+                    include_thoughts=True,
+                    thinking_budget=-1,  # Unlimited thinking budget
+                )
+                if enable_thinking
+                else None
+            )
+
             config = self._types.GenerateContentConfig(
                 temperature=temperature,
                 max_output_tokens=max_tokens,
                 system_instruction=system_instruction,
-                thinking_config=self._types.ThinkingConfig(
-                    include_thoughts=True,
-                    thinking_budget=-1,  # Unlimited thinking budget
-                ),
+                thinking_config=thinking_cfg,
             )
 
             response = await self._client.aio.models.generate_content(
