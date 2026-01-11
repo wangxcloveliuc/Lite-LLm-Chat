@@ -1,44 +1,19 @@
-from typing import List, Dict, Optional, Tuple
+from typing import List, Dict
+from .base import BaseLLMProvider
 
 
-class SiliconFlowProvider:
+class SiliconFlowProvider(BaseLLMProvider):
     id = "siliconflow"
     name = "SiliconFlow"
     description = "SiliconFlow (OpenAI-compatible) language models"
     supported = True
 
-    async def chat(
-        self,
-        model: str,
-        messages: List[Dict[str, str]],
-        temperature: float = 1,
-        max_tokens: Optional[int] = None,
-    ) -> Tuple[str, str]:
+    def __init__(self):
         from .siliconflow_client import siliconflow_client
-        return await siliconflow_client.chat(
-            model=model,
-            messages=messages,
-            temperature=temperature,
-            max_tokens=max_tokens,
-        )
-
-    async def stream_chat(
-        self,
-        model: str,
-        messages: List[Dict[str, str]],
-        temperature: float = 1,
-        max_tokens: Optional[int] = None,
-    ):
-        from .siliconflow_client import siliconflow_client
-        async for chunk in siliconflow_client.stream_chat(
-            model=model,
-            messages=messages,
-            temperature=temperature,
-            max_tokens=max_tokens,
-        ):
-            yield chunk
+        super().__init__(siliconflow_client)
 
     async def list_models(self) -> List[Dict[str, object]]:
+
         # Keeping this small and safe; you can extend via env/config if needed.
         model_ids = [
             "THUDM/GLM-Z1-Rumination-32B-0414",
@@ -134,17 +109,17 @@ class SiliconFlowProvider:
 
         models: List[Dict[str, object]] = []
         for model_id in model_ids:
-            name_parts = model_id.replace("/", " ").replace("-", " ").title().split()
-            name = " ".join(name_parts)
+            name = self._format_model_name(model_id)
             models.append(
                 {
                     "id": model_id,
                     "name": name,
-                    "provider": "siliconflow",
+                    "provider": self.id,
                     "description": f"{name}",
                 }
             )
         return models
+
 
 
 # Module-level provider instance expected by the registry

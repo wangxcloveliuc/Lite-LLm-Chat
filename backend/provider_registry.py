@@ -1,27 +1,7 @@
 from typing import Dict, List, Optional, Tuple
 import pkgutil
 import importlib
-
-
-# Provider adapter modules should expose a module-level `provider` instance
-# which the registry will discover dynamically.
-
-
-
-class LLMProvider:
-    id: str
-    name: str
-    description: str
-    supported: bool
-
-    async def chat(self, model: str, messages: List[Dict[str, str]], temperature: float = 1, max_tokens: Optional[int] = None) -> Tuple[str, str]:
-        raise NotImplementedError()
-
-    async def stream_chat(self, model: str, messages: List[Dict[str, str]], temperature: float = 1, max_tokens: Optional[int] = None):
-        raise NotImplementedError()
-
-    async def list_models(self) -> List[Dict[str, object]]:
-        raise NotImplementedError()
+from providers.base import LLMProvider
 
 
 def _discover_providers() -> Dict[str, LLMProvider]:

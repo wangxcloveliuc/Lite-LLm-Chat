@@ -1,33 +1,19 @@
-from typing import List, Dict, Optional, Tuple
+from typing import List, Dict
+from .base import BaseLLMProvider
 
 
-class DeepSeekProvider:
+class DeepSeekProvider(BaseLLMProvider):
     id = "deepseek"
     name = "DeepSeek"
     description = "DeepSeek AI language models"
     supported = True
 
-    async def chat(self, model: str, messages: List[Dict[str, str]], temperature: float = 1, max_tokens: Optional[int] = None) -> Tuple[str, str]:
-        # Lazy import to avoid importing the OpenAI client at module import time
+    def __init__(self):
         from .deepseek_client import deepseek_client
-        return await deepseek_client.chat(
-            model=model,
-            messages=messages,
-            temperature=temperature,
-            max_tokens=max_tokens,
-        )
-
-    async def stream_chat(self, model: str, messages: List[Dict[str, str]], temperature: float = 1, max_tokens: Optional[int] = None):
-        from .deepseek_client import deepseek_client
-        async for chunk in deepseek_client.stream_chat(
-            model=model,
-            messages=messages,
-            temperature=temperature,
-            max_tokens=max_tokens,
-        ):
-            yield chunk
+        super().__init__(deepseek_client)
 
     async def list_models(self) -> List[Dict[str, object]]:
+        # Hardcoded for now as DeepSeek list models might return many non-chat models
         return [
             {
                 "id": "deepseek-chat",
@@ -46,3 +32,4 @@ class DeepSeekProvider:
 
 # Module-level provider instance expected by the registry
 provider = DeepSeekProvider()
+

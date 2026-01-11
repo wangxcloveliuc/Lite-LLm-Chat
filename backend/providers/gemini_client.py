@@ -3,6 +3,7 @@ from typing import List, Dict, AsyncIterator, Optional, Tuple
 import json
 from google import genai
 from google.genai import types
+from .base import BaseClient
 
 try:
     from ..config import settings
@@ -10,18 +11,9 @@ except (ImportError, ValueError):
     from config import settings
 
 
-class GeminiClient:
+class GeminiClient(BaseClient):
     def __init__(self):
-        # Proxy support:
-        # - http/https proxies: SDK uses urllib.request.getproxies() via env vars
-        # - socks5: can be passed through http_options client_args/async_client_args
-        # if settings.http_proxy:
-        #     # Respect existing env overrides, but provide a default from settings
-        #     os.environ.setdefault("HTTPS_PROXY", settings.http_proxy)
-        #     os.environ.setdefault("HTTP_PROXY", settings.http_proxy)
-
         http_options = None
-        # if settings.http_proxy and settings.http_proxy.lower().startswith("socks5://"):
         if settings.http_proxy:
             http_options = types.HttpOptions(
                 client_args={"proxy": settings.http_proxy},
@@ -34,6 +26,7 @@ class GeminiClient:
             api_key=settings.gemini_api_key,
             http_options=http_options,
         )
+
 
     def _messages_to_contents_and_system(self, messages: List[Dict[str, str]]):
         system_parts: List[str] = []
