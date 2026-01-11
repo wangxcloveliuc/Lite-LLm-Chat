@@ -4,7 +4,7 @@ import Header from './components/Header';
 import ChatArea from './components/ChatArea';
 import SettingsSidebar from './components/SettingsSidebar';
 import { apiClient } from './api/apiClient';
-import type { Provider, Model, Session, Message, DeepSeekSettings, DoubaoSettings } from './types';
+import type { Provider, Model, Session, Message, DeepSeekSettings, DoubaoSettings, SiliconFlowSettings } from './types';
 import './App.css';
 
 function App() {
@@ -38,6 +38,19 @@ function App() {
     thinking: undefined,
     reasoning_effort: 'medium',
     max_completion_tokens: undefined,
+  });
+  const [siliconflowSettings, setSiliconflowSettings] = useState<SiliconFlowSettings>({
+    frequency_penalty: 0,
+    max_tokens: undefined,
+    presence_penalty: 0,
+    temperature: 1,
+    top_p: 1,
+    stop: '',
+    system_prompt: '',
+    enable_thinking: undefined,
+    thinking_budget: undefined,
+    min_p: undefined,
+    top_k: undefined,
   });
 
   useEffect(() => {
@@ -152,6 +165,11 @@ function App() {
         ...deepseekSettings,
         stop: deepseekSettings.stop ? deepseekSettings.stop.split(',').map(s => s.trim()) : undefined,
       };
+    } else if (selectedProvider === 'siliconflow') {
+      currentSettings = {
+        ...siliconflowSettings,
+        stop: siliconflowSettings.stop ? siliconflowSettings.stop.split(',').map(s => s.trim()) : undefined,
+      };
     } else {
       // Fallback to deepseek settings as default for other providers (common basic settings)
       currentSettings = {
@@ -180,6 +198,10 @@ function App() {
         thinking: currentSettings.thinking,
         reasoning_effort: currentSettings.reasoning_effort,
         max_completion_tokens: currentSettings.max_completion_tokens,
+        enable_thinking: currentSettings.enable_thinking,
+        thinking_budget: currentSettings.thinking_budget,
+        min_p: currentSettings.min_p,
+        top_k: currentSettings.top_k,
       };
 
       for await (const chunk of apiClient.chatStream(request, controller.signal)) {
@@ -356,10 +378,12 @@ function App() {
         onClose={() => setShowSettings(false)}
         provider={selectedProvider}
         modelId={selectedModel}
-        settings={selectedProvider === 'doubao' ? doubaoSettings : deepseekSettings}
+        settings={selectedProvider === 'doubao' ? doubaoSettings : (selectedProvider === 'siliconflow' ? siliconflowSettings : deepseekSettings)}
         onSettingsChange={(newSettings) => {
           if (selectedProvider === 'doubao') {
             setDoubaoSettings(newSettings);
+          } else if (selectedProvider === 'siliconflow') {
+            setSiliconflowSettings(newSettings);
           } else {
             setDeepseekSettings(newSettings);
           }

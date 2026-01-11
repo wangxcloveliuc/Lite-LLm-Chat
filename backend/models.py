@@ -109,6 +109,11 @@ class ChatRequest(BaseModel):
     thinking: Optional[bool] = None
     reasoning_effort: Optional[str] = None
     max_completion_tokens: Optional[int] = Field(default=None, ge=1)
+    # SiliconFlow specific
+    enable_thinking: Optional[bool] = None
+    thinking_budget: Optional[int] = Field(default=None, ge=128, le=32768)
+    min_p: Optional[float] = Field(default=None, ge=0.0, le=1.0)
+    top_k: Optional[float] = Field(default=None)
 
 
 class ChatResponse(BaseModel):

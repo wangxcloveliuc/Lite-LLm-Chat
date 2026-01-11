@@ -408,6 +408,14 @@ async def chat_completion(
                     provider_kwargs["reasoning_effort"] = chat_request.reasoning_effort
                 if chat_request.max_completion_tokens is not None:
                     provider_kwargs["max_completion_tokens"] = chat_request.max_completion_tokens
+                if chat_request.enable_thinking is not None:
+                    provider_kwargs["enable_thinking"] = chat_request.enable_thinking
+                if chat_request.thinking_budget is not None:
+                    provider_kwargs["thinking_budget"] = chat_request.thinking_budget
+                if chat_request.min_p is not None:
+                    provider_kwargs["min_p"] = chat_request.min_p
+                if chat_request.top_k is not None:
+                    provider_kwargs["top_k"] = chat_request.top_k
 
                 stream = provider_client.stream_chat(
                     model=model_id,
@@ -529,6 +537,14 @@ async def chat_completion(
                 provider_kwargs["reasoning_effort"] = chat_request.reasoning_effort
             if chat_request.max_completion_tokens is not None:
                 provider_kwargs["max_completion_tokens"] = chat_request.max_completion_tokens
+            if chat_request.enable_thinking is not None:
+                provider_kwargs["enable_thinking"] = chat_request.enable_thinking
+            if chat_request.thinking_budget is not None:
+                provider_kwargs["thinking_budget"] = chat_request.thinking_budget
+            if chat_request.min_p is not None:
+                provider_kwargs["min_p"] = chat_request.min_p
+            if chat_request.top_k is not None:
+                provider_kwargs["top_k"] = chat_request.top_k
 
             response_content, reasoning_content = await provider_client.chat(
                 model=model_id,

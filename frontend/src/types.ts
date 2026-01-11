@@ -50,6 +50,13 @@ export interface DoubaoSettings extends DeepSeekSettings {
   max_completion_tokens?: number;
 }
 
+export interface SiliconFlowSettings extends DeepSeekSettings {
+  enable_thinking?: boolean;
+  thinking_budget?: number;
+  min_p?: number;
+  top_k?: number;
+}
+
 export interface ChatRequest {
   provider: string;
   model: string;
@@ -70,6 +77,10 @@ export interface ChatRequest {
   thinking?: boolean;
   reasoning_effort?: string;
   max_completion_tokens?: number;
+  enable_thinking?: boolean;
+  thinking_budget?: number;
+  min_p?: number;
+  top_k?: number;
 }
 
 export interface StreamChunk {

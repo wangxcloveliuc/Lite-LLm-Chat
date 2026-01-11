@@ -9,38 +9,41 @@ except (ImportError, ValueError):
 class SiliconFlowClient(OpenAICompatibleClient):
     """Client for interacting with SiliconFlow OpenAI-compatible API"""
 
-    # Models that support thinking/reasoning capabilities
-    THINKING_MODELS = {
-        "zai-org/GLM-4.6",
-        "Qwen/Qwen3-8B",
-        "Qwen/Qwen3-14B", 
-        "Qwen/Qwen3-32B",
-        "wen/Qwen3-30B-A3B",
-        "Qwen/Qwen3-235B-A22B",
-        "tencent/Hunyuan-A13B-Instruct",
-        "zai-org/GLM-4.5V",
-        "deepseek-ai/DeepSeek-V3.1-Terminus",
-        "Pro/deepseek-ai/DeepSeek-V3.1-Terminus",
-        "deepseek-ai/DeepSeek-V3.2",
-        "Pro/deepseek-ai/DeepSeek-V3.2"
-    }
-
     def __init__(self):
         super().__init__(
             api_key=settings.siliconflow_api_key,
             base_url=settings.siliconflow_base_url,
         )
 
-    async def chat(self, model: str, *args, **kwargs):
+    async def _prepare_extra_body(self, model: str, kwargs: dict) -> dict:
         extra_body = kwargs.pop("extra_body", {})
-        if model in self.THINKING_MODELS:
-            extra_body["enable_thinking"] = True
+        
+        # Extract SiliconFlow specific parameters
+        enable_thinking = kwargs.pop("enable_thinking", None)
+        thinking_budget = kwargs.pop("thinking_budget", None)
+        min_p = kwargs.pop("min_p", None)
+        top_k = kwargs.pop("top_k", None)
+
+        if enable_thinking is not None:
+            extra_body["enable_thinking"] = enable_thinking
+
+        if thinking_budget is not None:
+            extra_body["thinking_budget"] = thinking_budget
+        
+        if min_p is not None:
+            extra_body["min_p"] = min_p
+            
+        if top_k is not None:
+            extra_body["top_k"] = top_k
+            
+        return extra_body
+
+    async def chat(self, model: str, *args, **kwargs):
+        extra_body = await self._prepare_extra_body(model, kwargs)
         return await super().chat(model, *args, extra_body=extra_body, **kwargs)
 
     async def stream_chat(self, model: str, *args, **kwargs):
-        extra_body = kwargs.pop("extra_body", {})
-        if model in self.THINKING_MODELS:
-            extra_body["enable_thinking"] = True
+        extra_body = await self._prepare_extra_body(model, kwargs)
         async for chunk in super().stream_chat(model, *args, extra_body=extra_body, **kwargs):
             yield chunk
 
