@@ -41,6 +41,7 @@ export interface DeepSeekSettings {
   temperature: number;
   top_p: number;
   stop: string;
+  system_prompt: string;
 }
 
 export interface ChatRequest {
@@ -58,6 +59,7 @@ export interface ChatRequest {
   message_provider?: string;
   message_model?: string;
   title?: string;
+  system_prompt?: string;
 }
 
 export interface StreamChunk {

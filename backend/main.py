@@ -1,6 +1,7 @@
 """
 FastAPI Backend for Lite-LLM-Chat
 """
+
 import asyncio
 
 from fastapi import FastAPI, Depends, HTTPException, Request, status
@@ -14,10 +15,22 @@ from contextlib import asynccontextmanager
 from config import settings
 from database import init_db, get_db, ChatSession, ChatMessage
 from models import (
-    Provider, Model, SessionCreate, SessionUpdate, SessionResponse,
-    SessionDetailResponse, ChatRequest, ChatResponse, MessageResponse
+    Provider,
+    Model,
+    SessionCreate,
+    SessionUpdate,
+    SessionResponse,
+    SessionDetailResponse,
+    ChatRequest,
+    ChatResponse,
+    MessageResponse,
 )
-from provider_registry import get_provider, list_models as registry_list_models, list_providers as registry_list_providers
+from provider_registry import (
+    get_provider,
+    list_models as registry_list_models,
+    list_providers as registry_list_providers,
+)
+
 
 # Lifespan handler to initialize resources on startup/shutdown
 @asynccontextmanager
@@ -27,12 +40,13 @@ async def lifespan(app: FastAPI):
     yield
     # Optionally add shutdown/cleanup tasks here
 
+
 # Initialize FastAPI app with lifespan
 app = FastAPI(
     title=settings.app_name,
     version=settings.app_version,
     description="Backend service for Lite-LLM-Chat with DeepSeek integration",
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 # Configure CORS
@@ -47,6 +61,7 @@ app.add_middleware(
 
 # ==================== Provider Endpoints ====================
 
+
 @app.get(f"{settings.api_prefix}/providers", response_model=List[Provider])
 async def get_providers():
     """Get list of available LLM providers"""
@@ -55,11 +70,12 @@ async def get_providers():
 
 # ==================== Model Endpoints ====================
 
+
 @app.get(f"{settings.api_prefix}/models", response_model=List[Model])
 async def get_models(provider: str = None):
     """
     Get list of available models
-    
+
     Args:
         provider: Optional filter by provider ID
     """
@@ -68,25 +84,24 @@ async def get_models(provider: str = None):
 
 # ==================== Session Endpoints ====================
 
+
 @app.get(f"{settings.api_prefix}/sessions", response_model=List[SessionResponse])
-async def get_sessions(
-    skip: int = 0,
-    limit: int = 100,
-    db: Session = Depends(get_db)
-):
+async def get_sessions(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     """
     Get list of chat sessions
-    
+
     Args:
         skip: Number of records to skip
         limit: Maximum number of records to return
     """
-    sessions = db.query(ChatSession)\
-        .order_by(ChatSession.updated_at.desc())\
-        .offset(skip)\
-        .limit(limit)\
+    sessions = (
+        db.query(ChatSession)
+        .order_by(ChatSession.updated_at.desc())
+        .offset(skip)
+        .limit(limit)
         .all()
-    
+    )
+
     # Add message count to each session
     result = []
     for session in sessions:
@@ -97,37 +112,40 @@ async def get_sessions(
             "model": session.model,
             "created_at": session.created_at,
             "updated_at": session.updated_at,
-            "message_count": len(session.messages)
+            "message_count": len(session.messages),
         }
         result.append(SessionResponse(**session_dict))
-    
+
     return result
 
 
-@app.get(f"{settings.api_prefix}/sessions/{{session_id}}", response_model=SessionDetailResponse)
+@app.get(
+    f"{settings.api_prefix}/sessions/{{session_id}}",
+    response_model=SessionDetailResponse,
+)
 async def get_session_detail(session_id: int, db: Session = Depends(get_db)):
     """
     Get detailed information about a specific session including messages
-    
+
     Args:
         session_id: The session ID
     """
     session = db.query(ChatSession).filter(ChatSession.id == session_id).first()
-    
+
     if not session:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Session {session_id} not found"
+            detail=f"Session {session_id} not found",
         )
-    
+
     # Load ordered messages for the session (oldest -> newest)
     session_messages = (
         db.query(ChatMessage)
-          .filter(ChatMessage.session_id == session_id)
-          .order_by(ChatMessage.created_at.asc())
-          .all()
+        .filter(ChatMessage.session_id == session_id)
+        .order_by(ChatMessage.created_at.asc())
+        .all()
     )
-    
+
     return SessionDetailResponse(
         id=session.id,
         title=session.title,
@@ -136,28 +154,32 @@ async def get_session_detail(session_id: int, db: Session = Depends(get_db)):
         created_at=session.created_at,
         updated_at=session.updated_at,
         message_count=len(session_messages),
-        messages=[MessageResponse.model_validate(msg) for msg in session_messages]
+        messages=[MessageResponse.model_validate(msg) for msg in session_messages],
     )
 
 
-@app.post(f"{settings.api_prefix}/sessions", response_model=SessionResponse, status_code=status.HTTP_201_CREATED)
+@app.post(
+    f"{settings.api_prefix}/sessions",
+    response_model=SessionResponse,
+    status_code=status.HTTP_201_CREATED,
+)
 async def create_session(session_data: SessionCreate, db: Session = Depends(get_db)):
     """
     Create a new chat session
-    
+
     Args:
         session_data: Session creation data
     """
     session = ChatSession(
         title=session_data.title,
         provider=session_data.provider,
-        model=session_data.model
+        model=session_data.model,
     )
-    
+
     db.add(session)
     db.commit()
     db.refresh(session)
-    
+
     return SessionResponse(
         id=session.id,
         title=session.title,
@@ -165,38 +187,38 @@ async def create_session(session_data: SessionCreate, db: Session = Depends(get_
         model=session.model,
         created_at=session.created_at,
         updated_at=session.updated_at,
-        message_count=0
+        message_count=0,
     )
 
 
-@app.patch(f"{settings.api_prefix}/sessions/{{session_id}}", response_model=SessionResponse)
+@app.patch(
+    f"{settings.api_prefix}/sessions/{{session_id}}", response_model=SessionResponse
+)
 async def update_session(
-    session_id: int,
-    session_data: SessionUpdate,
-    db: Session = Depends(get_db)
+    session_id: int, session_data: SessionUpdate, db: Session = Depends(get_db)
 ):
     """
     Update a chat session
-    
+
     Args:
         session_id: The session ID
         session_data: Session update data
     """
     session = db.query(ChatSession).filter(ChatSession.id == session_id).first()
-    
+
     if not session:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Session {session_id} not found"
+            detail=f"Session {session_id} not found",
         )
-    
+
     if session_data.title:
         session.title = session_data.title
-    
+
     session.updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(session)
-    
+
     return SessionResponse(
         id=session.id,
         title=session.title,
@@ -204,52 +226,59 @@ async def update_session(
         model=session.model,
         created_at=session.created_at,
         updated_at=session.updated_at,
-        message_count=len(session.messages)
+        message_count=len(session.messages),
     )
 
 
-@app.delete(f"{settings.api_prefix}/sessions/{{session_id}}", status_code=status.HTTP_204_NO_CONTENT)
+@app.delete(
+    f"{settings.api_prefix}/sessions/{{session_id}}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
 async def delete_session(session_id: int, db: Session = Depends(get_db)):
     """
     Delete a chat session
-    
+
     Args:
         session_id: The session ID
     """
     session = db.query(ChatSession).filter(ChatSession.id == session_id).first()
-    
+
     if not session:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Session {session_id} not found"
+            detail=f"Session {session_id} not found",
         )
-    
+
     db.delete(session)
     db.commit()
 
 
-@app.delete(f"{settings.api_prefix}/sessions/{{session_id}}/truncate/{{message_id}}", status_code=status.HTTP_204_NO_CONTENT)
-async def truncate_session(session_id: int, message_id: int, db: Session = Depends(get_db)):
+@app.delete(
+    f"{settings.api_prefix}/sessions/{{session_id}}/truncate/{{message_id}}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def truncate_session(
+    session_id: int, message_id: int, db: Session = Depends(get_db)
+):
     """
     Delete all messages in a session starting from a specific message ID (inclusive)
-    
+
     Args:
         session_id: The session ID
         message_id: The ID of the message from which to start deleting
     """
     session = db.query(ChatSession).filter(ChatSession.id == session_id).first()
-    
+
     if not session:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Session {session_id} not found"
+            detail=f"Session {session_id} not found",
         )
-    
+
     db.query(ChatMessage).filter(
-        ChatMessage.session_id == session_id,
-        ChatMessage.id >= message_id
+        ChatMessage.session_id == session_id, ChatMessage.id >= message_id
     ).delete()
-    
+
     session.updated_at = datetime.now(timezone.utc)
     db.commit()
 
@@ -266,28 +295,36 @@ async def delete_all_sessions(db: Session = Depends(get_db)):
 
 # ==================== Chat Endpoints ====================
 
+
 @app.post(f"{settings.api_prefix}/chat")
-async def chat_completion(chat_request: ChatRequest, request: Request, db: Session = Depends(get_db)):
+async def chat_completion(
+    chat_request: ChatRequest, request: Request, db: Session = Depends(get_db)
+):
     """
     Chat completion endpoint with streaming support
-    
+
     Args:
         request: Chat request data
     """
     # Get or create session
     if chat_request.session_id:
-        session = db.query(ChatSession).filter(ChatSession.id == chat_request.session_id).first()
+        session = (
+            db.query(ChatSession)
+            .filter(ChatSession.id == chat_request.session_id)
+            .first()
+        )
         if not session:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Session {chat_request.session_id} not found"
+                detail=f"Session {chat_request.session_id} not found",
             )
     else:
         # Create new session
         session = ChatSession(
-            title=chat_request.title or f"Chat {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M')}",
+            title=chat_request.title
+            or f"Chat {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M')}",
             provider=chat_request.provider,
-            model=chat_request.model
+            model=chat_request.model,
         )
         db.add(session)
         db.commit()
@@ -299,38 +336,58 @@ async def chat_completion(chat_request: ChatRequest, request: Request, db: Sessi
     if not provider_client:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Unsupported provider: {provider_id}"
+            detail=f"Unsupported provider: {provider_id}",
         )
-    
+
     # Read existing session history (oldest -> newest)
     existing_messages = (
         db.query(ChatMessage)
-          .filter(ChatMessage.session_id == session.id)
-          .order_by(ChatMessage.created_at.asc())
-          .all()
+        .filter(ChatMessage.session_id == session.id)
+        .order_by(ChatMessage.created_at.asc())
+        .all()
     )
 
     # Prepare incoming messages (only user/system).
-    incoming_tuples = [(msg.role, msg.content) for msg in chat_request.messages if msg.role in ("user", "system")]
+    incoming_tuples = [
+        (msg.role, msg.content)
+        for msg in chat_request.messages
+        if msg.role in ("user", "system")
+    ]
 
     # Build API messages from full context (existing + deduped incoming) but DO NOT persist incoming messages yet
-    api_messages = [{"role": m.role, "content": m.content} for m in existing_messages] + [{"role": r, "content": c} for r, c in incoming_tuples]
+    api_messages = [
+        {"role": m.role, "content": m.content} for m in existing_messages
+    ] + [{"role": r, "content": c} for r, c in incoming_tuples]
+
+    # Add system prompt at the beginning if provided
+    if chat_request.system_prompt:
+        api_messages = [
+            {"role": "system", "content": chat_request.system_prompt}
+        ] + api_messages
 
     # Keep in-memory ChatMessage objects for deduped incoming messages to persist later if the model call succeeds
     incoming_msg_objects = [
-        ChatMessage(session_id=session.id, role=r, content=c, provider=provider_id, model=model_id)
+        ChatMessage(
+            session_id=session.id,
+            role=r,
+            content=c,
+            provider=provider_id,
+            model=model_id,
+        )
         for r, c in incoming_tuples
     ]
 
     # Stream response
     if chat_request.stream:
+
         async def generate():
             """Generator for streaming response"""
             # Send session ID first
             import json
+
             yield f"data: {json.dumps({'session_id': session.id})}\n\n"
             await asyncio.sleep(0)
-            
+
             full_response = ""
             full_reasoning = ""
             failed = False
@@ -343,7 +400,7 @@ async def chat_completion(chat_request: ChatRequest, request: Request, db: Sessi
                     frequency_penalty=chat_request.frequency_penalty,
                     presence_penalty=chat_request.presence_penalty,
                     top_p=chat_request.top_p,
-                    stop=chat_request.stop
+                    stop=chat_request.stop,
                 )
 
                 client_gone = False
@@ -421,7 +478,7 @@ async def chat_completion(chat_request: ChatRequest, request: Request, db: Sessi
                         content=full_response,
                         thought_process=full_reasoning if full_reasoning else None,
                         provider=provider_id,
-                        model=model_id
+                        model=model_id,
                     )
                     db.add(assistant_message)
                     session.provider = provider_id
@@ -430,14 +487,17 @@ async def chat_completion(chat_request: ChatRequest, request: Request, db: Sessi
                     db.commit()
             except Exception as e:
                 # If saving fails, notify client
-                yield f"data: {json.dumps({'error': 'Failed to save messages'})}\n\n"        
+                yield f"data: {json.dumps({'error': 'Failed to save messages'})}\n\n"
+
         headers = {
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
             "X-Accel-Buffering": "no",
         }
-        return StreamingResponse(generate(), media_type="text/event-stream", headers=headers)
-    
+        return StreamingResponse(
+            generate(), media_type="text/event-stream", headers=headers
+        )
+
     # Non-streaming response
     else:
         try:
@@ -449,14 +509,20 @@ async def chat_completion(chat_request: ChatRequest, request: Request, db: Sessi
                 frequency_penalty=chat_request.frequency_penalty,
                 presence_penalty=chat_request.presence_penalty,
                 top_p=chat_request.top_p,
-                stop=chat_request.stop
+                stop=chat_request.stop,
             )
         except Exception as e:
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Provider error: {str(e)}")
-        
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Provider error: {str(e)}",
+            )
+
         # Persist incoming messages and assistant response atomically only if assistant produced content
         if not response_content:
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Empty response from provider")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Empty response from provider",
+            )
         try:
             if incoming_msg_objects:
                 db.add_all(incoming_msg_objects)
@@ -466,7 +532,7 @@ async def chat_completion(chat_request: ChatRequest, request: Request, db: Sessi
                 content=response_content,
                 thought_process=reasoning_content if reasoning_content else None,
                 provider=provider_id,
-                model=model_id
+                model=model_id,
             )
             db.add(assistant_message)
             session.provider = provider_id
@@ -475,15 +541,19 @@ async def chat_completion(chat_request: ChatRequest, request: Request, db: Sessi
             db.commit()
             db.refresh(assistant_message)
         except Exception as e:
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to save messages")
-        
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to save messages",
+            )
+
         return ChatResponse(
             session_id=session.id,
-            message=MessageResponse.model_validate(assistant_message)
+            message=MessageResponse.model_validate(assistant_message),
         )
 
 
 # ==================== Health Check ====================
+
 
 @app.get("/health")
 async def health_check():
@@ -491,10 +561,11 @@ async def health_check():
     return {
         "status": "healthy",
         "app": settings.app_name,
-        "version": settings.app_version
+        "version": settings.app_version,
     }
 
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=settings.backend_port)

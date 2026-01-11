@@ -1,6 +1,7 @@
 """
 Pydantic models for request/response validation
 """
+
 from pydantic import BaseModel, Field
 from typing import List, Optional
 from datetime import datetime
@@ -9,6 +10,7 @@ from datetime import datetime
 # Provider and Model schemas
 class Provider(BaseModel):
     """Provider information"""
+
     id: str
     name: str
     description: str
@@ -17,6 +19,7 @@ class Provider(BaseModel):
 
 class Model(BaseModel):
     """Model information"""
+
     id: str
     name: str
     provider: str
@@ -27,12 +30,14 @@ class Model(BaseModel):
 # Chat message schemas
 class MessageCreate(BaseModel):
     """Create a new message"""
+
     role: str = Field(..., pattern="^(user|assistant|system)$")
     content: str
 
 
 class MessageResponse(BaseModel):
     """Message response"""
+
     id: int
     role: str
     content: str
@@ -40,7 +45,7 @@ class MessageResponse(BaseModel):
     model: Optional[str] = None
     thought_process: Optional[str] = None
     created_at: datetime
-    
+
     class Config:
         from_attributes = True
 
@@ -48,6 +53,7 @@ class MessageResponse(BaseModel):
 # Chat session schemas
 class SessionCreate(BaseModel):
     """Create a new chat session"""
+
     title: str = Field(..., min_length=1, max_length=255)
     provider: str
     model: str
@@ -55,11 +61,13 @@ class SessionCreate(BaseModel):
 
 class SessionUpdate(BaseModel):
     """Update chat session"""
+
     title: Optional[str] = None
 
 
 class SessionResponse(BaseModel):
     """Chat session response"""
+
     id: int
     title: str
     provider: str
@@ -67,19 +75,21 @@ class SessionResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     message_count: Optional[int] = None
-    
+
     class Config:
         from_attributes = True
 
 
 class SessionDetailResponse(SessionResponse):
     """Detailed session response with messages"""
+
     messages: List[MessageResponse] = []
 
 
 # Chat request/response schemas
 class ChatRequest(BaseModel):
     """Chat completion request"""
+
     session_id: Optional[int] = None
     provider: str
     model: str
@@ -94,9 +104,11 @@ class ChatRequest(BaseModel):
     top_p: float = Field(default=1.0, ge=0.0, le=1.0)
     stop: Optional[List[str]] = None
     title: Optional[str] = None
+    system_prompt: Optional[str] = None
 
 
 class ChatResponse(BaseModel):
     """Chat completion response (non-streaming)"""
+
     session_id: int
     message: MessageResponse

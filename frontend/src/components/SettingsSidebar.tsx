@@ -97,6 +97,22 @@ const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
 
             <div className="setting-group">
               <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>
+                System Prompt
+              </label>
+              <textarea
+                placeholder="Enter a system prompt to guide the assistant's behavior..."
+                value={settings.system_prompt}
+                onChange={(e) => handleChange('system_prompt', e.target.value)}
+                rows={4}
+                style={{ width: '100%', padding: '8px', border: '1px solid #E5E7EB', borderRadius: '4px', resize: 'vertical', fontFamily: 'inherit', fontSize: '14px' }}
+              />
+              <p style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+                Define how the assistant should behave and respond.
+              </p>
+            </div>
+
+            <div className="setting-group">
+              <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>
                 Temperature ({settings.temperature})
               </label>
               <input

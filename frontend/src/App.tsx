@@ -25,6 +25,7 @@ function App() {
     temperature: 1,
     top_p: 1,
     stop: '',
+    system_prompt: '',
   });
 
   useEffect(() => {
@@ -152,6 +153,7 @@ function App() {
           presence_penalty: deepseekSettings.presence_penalty,
           top_p: deepseekSettings.top_p,
           stop: deepseekSettings.stop ? deepseekSettings.stop.split(',').map(s => s.trim()) : undefined,
+          system_prompt: deepseekSettings.system_prompt || undefined,
         } : {}),
       };
 
