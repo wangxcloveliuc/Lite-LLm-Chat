@@ -1,6 +1,6 @@
 import type { Provider, Model, Session, Message, ChatRequest, StreamChunk } from '../types';
 
-const BASE_URL = 'http://localhost:8000';
+const BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';
 const API_PREFIX = '/api/v1';
 
 class APIClient {

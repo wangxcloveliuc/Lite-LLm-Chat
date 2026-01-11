@@ -13,6 +13,9 @@ class Settings(BaseSettings):
     app_version: str = "1.0.0"
     api_prefix: str = "/api/v1"
 
+    # Server
+    backend_port: int = 8000
+
     http_proxy: Optional[str] = None
     # Outbound request timeout (seconds) for LLM provider calls
     provider_timeout: float = 20.0
