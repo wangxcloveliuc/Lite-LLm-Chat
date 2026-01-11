@@ -343,25 +343,31 @@ async def chat_completion(chat_request: ChatRequest, request: Request, db: Sessi
                 )
 
                 client_gone = False
+                next_chunk_task = None
                 try:
+                    next_chunk_task = asyncio.ensure_future(stream.__anext__())
                     while True:
                         # Poll for client disconnects while waiting for provider chunks
                         if await request.is_disconnected():
                             client_gone = True
                             break
 
+                        done, _ = await asyncio.wait({next_chunk_task}, timeout=0.5)
+                        if not done:
+                            continue
+
                         try:
-                            chunk = await asyncio.wait_for(stream.__anext__(), timeout=0.5)
+                            chunk = next_chunk_task.result()
                         except StopAsyncIteration:
                             break
-                        except asyncio.TimeoutError:
-                            continue
                         except asyncio.CancelledError:
                             # client cancelled; stop processing and do not persist
                             return
 
                         yield chunk
                         await asyncio.sleep(0)
+
+                        next_chunk_task = asyncio.ensure_future(stream.__anext__())
                         # Extract content and reasoning for saving and detect errors
                         if chunk.startswith("data: "):
                             try:
@@ -377,6 +383,9 @@ async def chat_completion(chat_request: ChatRequest, request: Request, db: Sessi
                             except:
                                 pass
                 finally:
+                    if next_chunk_task is not None and not next_chunk_task.done():
+                        next_chunk_task.cancel()
+
                     # Ensure provider stream is closed when client disconnects or loop ends
                     aclose = getattr(stream, "aclose", None)
                     if callable(aclose):

@@ -1,8 +1,8 @@
-import os
 from typing import List, Dict, AsyncIterator, Optional, Tuple
 import json
 from google import genai
 from google.genai import types
+
 from .base import BaseClient
 
 try:
@@ -18,7 +18,6 @@ class GeminiClient(BaseClient):
             http_options = types.HttpOptions(
                 client_args={"proxy": settings.http_proxy},
                 async_client_args={"proxy": settings.http_proxy},
-                timeout=settings.provider_timeout,
             )
 
         self._types = types

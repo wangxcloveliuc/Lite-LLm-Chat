@@ -28,8 +28,11 @@ def _discover_providers() -> Dict[str, LLMProvider]:
             p = getattr(mod, "provider", None)
             if p and getattr(p, "id", None):
                 registry[p.id] = p
-        except Exception:
+        except Exception as e:
             # Ignore problematic provider modules so registry remains usable
+            import traceback
+            print(f"[provider_registry] load {mod_name} failed: {e}")
+            traceback.print_exc()
             continue
 
     return registry
