@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import ChatArea from './components/ChatArea';
+import SettingsSidebar from './components/SettingsSidebar';
 import { apiClient } from './api/apiClient';
-import type { Provider, Model, Session, Message } from './types';
+import type { Provider, Model, Session, Message, DeepSeekSettings } from './types';
 import './App.css';
 
 function App() {
@@ -16,11 +17,38 @@ function App() {
   const [selectedModel, setSelectedModel] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
   const [abortController, setAbortController] = useState<AbortController | null>(null);
+  const [showSettings, setShowSettings] = useState(false);
+  const [deepseekSettings, setDeepseekSettings] = useState<DeepSeekSettings>({
+    frequency_penalty: 0,
+    max_tokens: 4096,
+    presence_penalty: 0,
+    temperature: 1,
+    top_p: 1,
+    stop: '',
+  });
+
+  useEffect(() => {
+    if (selectedProvider === 'deepseek') {
+      if (selectedModel === 'deepseek-reasoner') {
+        setDeepseekSettings((prev) => ({ ...prev, max_tokens: 32768 }));
+      } else {
+        setDeepseekSettings((prev) => ({ ...prev, max_tokens: 4096 }));
+      }
+    }
+  }, [selectedModel, selectedProvider]);
 
   useEffect(() => {
     loadProviders();
     loadSessions();
   }, []);
+
+  const handleToggleSettings = async () => {
+    // When opening settings, ensure models are loaded so modelId is set
+    if (!showSettings && selectedProvider) {
+      await loadModels(selectedProvider);
+    }
+    setShowSettings(!showSettings);
+  };
 
   useEffect(() => {
     if (selectedProvider) {
@@ -117,6 +145,14 @@ function App() {
         stream: true,
         session_id: currentSessionId || undefined,
         title: currentSessionId ? undefined : content.substring(0, 50),
+        ...(selectedProvider === 'deepseek' ? {
+          temperature: deepseekSettings.temperature,
+          max_tokens: deepseekSettings.max_tokens,
+          frequency_penalty: deepseekSettings.frequency_penalty,
+          presence_penalty: deepseekSettings.presence_penalty,
+          top_p: deepseekSettings.top_p,
+          stop: deepseekSettings.stop ? deepseekSettings.stop.split(',').map(s => s.trim()) : undefined,
+        } : {}),
       };
 
       for await (const chunk of apiClient.chatStream(request, controller.signal)) {
@@ -276,6 +312,7 @@ function App() {
           selectedModel={selectedModel}
           onProviderChange={handleProviderChange}
           onModelChange={handleModelChange}
+          onToggleSettings={handleToggleSettings}
         />
         <ChatArea
           messages={messages}
@@ -287,6 +324,14 @@ function App() {
           onRefreshMessage={handleRefreshMessage}
         />
       </main>
+      <SettingsSidebar
+        isOpen={showSettings}
+        onClose={() => setShowSettings(false)}
+        provider={selectedProvider}
+        modelId={selectedModel}
+        settings={deepseekSettings}
+        onSettingsChange={setDeepseekSettings}
+      />
     </div>
   );
 }

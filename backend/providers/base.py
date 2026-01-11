@@ -15,6 +15,7 @@ class LLMProvider(abc.ABC):
         messages: List[Dict[str, str]],
         temperature: float = 1,
         max_tokens: Optional[int] = None,
+        **kwargs,
     ) -> Tuple[str, str]:
         """
         Send a chat request and return (content, reasoning).
@@ -28,6 +29,7 @@ class LLMProvider(abc.ABC):
         messages: List[Dict[str, str]],
         temperature: float = 1,
         max_tokens: Optional[int] = None,
+        **kwargs,
     ) -> AsyncIterator[str]:
         """
         Send a chat request and yield SSE-formatted chunks.

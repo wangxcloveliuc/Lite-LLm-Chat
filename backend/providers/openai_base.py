@@ -55,6 +55,7 @@ class OpenAICompatibleClient(BaseClient):
         temperature: float = 1,
         max_tokens: Optional[int] = None,
         extra_body: Optional[Dict] = None,
+        **kwargs,
     ) -> Tuple[str, str]:
         try:
             response = self.client.chat.completions.create(
@@ -64,6 +65,7 @@ class OpenAICompatibleClient(BaseClient):
                 max_tokens=max_tokens,
                 stream=False,
                 extra_body=extra_body,
+                **kwargs,
             )
 
             msg = response.choices[0].message
@@ -80,6 +82,7 @@ class OpenAICompatibleClient(BaseClient):
         temperature: float = 1,
         max_tokens: Optional[int] = None,
         extra_body: Optional[Dict] = None,
+        **kwargs,
     ) -> AsyncIterator[str]:
         try:
             response = self.client.chat.completions.create(
@@ -89,6 +92,7 @@ class OpenAICompatibleClient(BaseClient):
                 max_tokens=max_tokens,
                 stream=True,
                 extra_body=extra_body,
+                **kwargs,
             )
 
             for chunk in response:

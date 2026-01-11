@@ -34,6 +34,15 @@ export interface Session {
   messages?: Message[];
 }
 
+export interface DeepSeekSettings {
+  frequency_penalty: number;
+  max_tokens: number;
+  presence_penalty: number;
+  temperature: number;
+  top_p: number;
+  stop: string;
+}
+
 export interface ChatRequest {
   provider: string;
   model: string;
@@ -41,6 +50,10 @@ export interface ChatRequest {
   stream: boolean;
   temperature?: number;
   max_tokens?: number;
+  frequency_penalty?: number;
+  presence_penalty?: number;
+  top_p?: number;
+  stop?: string[] | null;
   session_id?: number;
   message_provider?: string;
   message_model?: string;

@@ -339,7 +339,11 @@ async def chat_completion(chat_request: ChatRequest, request: Request, db: Sessi
                     model=model_id,
                     messages=api_messages,
                     temperature=chat_request.temperature,
-                    max_tokens=chat_request.max_tokens
+                    max_tokens=chat_request.max_tokens,
+                    frequency_penalty=chat_request.frequency_penalty,
+                    presence_penalty=chat_request.presence_penalty,
+                    top_p=chat_request.top_p,
+                    stop=chat_request.stop
                 )
 
                 client_gone = False
@@ -441,7 +445,11 @@ async def chat_completion(chat_request: ChatRequest, request: Request, db: Sessi
                 model=model_id,
                 messages=api_messages,
                 temperature=chat_request.temperature,
-                max_tokens=chat_request.max_tokens
+                max_tokens=chat_request.max_tokens,
+                frequency_penalty=chat_request.frequency_penalty,
+                presence_penalty=chat_request.presence_penalty,
+                top_p=chat_request.top_p,
+                stop=chat_request.stop
             )
         except Exception as e:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Provider error: {str(e)}")
