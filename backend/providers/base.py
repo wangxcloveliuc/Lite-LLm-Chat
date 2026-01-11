@@ -46,10 +46,10 @@ class LLMProvider(abc.ABC):
         Helper to format a model ID into a more readable name.
         """
         # Remove organization prefix if present (e.g., 'openai/gpt-4' -> 'gpt-4')
-        display_id = model_id.split("/")[-1] if "/" in model_id else model_id
+        display_id = model_id
         
         # Replace dashes and underscores with spaces and title case
-        name_parts = display_id.replace("-", " ").replace("_", " ").title().split()
+        name_parts = display_id.replace("-", " ").replace("_", " ").replace("/", " ").title().split()
         return " ".join(name_parts)
 
 
