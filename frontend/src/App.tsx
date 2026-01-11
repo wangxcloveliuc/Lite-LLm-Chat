@@ -4,7 +4,7 @@ import Header from './components/Header';
 import ChatArea from './components/ChatArea';
 import SettingsSidebar from './components/SettingsSidebar';
 import { apiClient } from './api/apiClient';
-import type { Provider, Model, Session, Message, DeepSeekSettings } from './types';
+import type { Provider, Model, Session, Message, DeepSeekSettings, DoubaoSettings } from './types';
 import './App.css';
 
 function App() {
@@ -20,23 +20,25 @@ function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [deepseekSettings, setDeepseekSettings] = useState<DeepSeekSettings>({
     frequency_penalty: 0,
-    max_tokens: 4096,
+    max_tokens: undefined,
     presence_penalty: 0,
     temperature: 1,
     top_p: 1,
     stop: '',
     system_prompt: '',
   });
-
-  useEffect(() => {
-    if (selectedProvider === 'deepseek') {
-      if (selectedModel === 'deepseek-reasoner') {
-        setDeepseekSettings((prev) => ({ ...prev, max_tokens: 32768 }));
-      } else {
-        setDeepseekSettings((prev) => ({ ...prev, max_tokens: 4096 }));
-      }
-    }
-  }, [selectedModel, selectedProvider]);
+  const [doubaoSettings, setDoubaoSettings] = useState<DoubaoSettings>({
+    frequency_penalty: 0,
+    max_tokens: undefined,
+    presence_penalty: 0,
+    temperature: 1,
+    top_p: 1,
+    stop: '',
+    system_prompt: '',
+    thinking: undefined,
+    reasoning_effort: 'medium',
+    max_completion_tokens: undefined,
+  });
 
   useEffect(() => {
     loadProviders();
@@ -125,20 +127,40 @@ function App() {
       content,
     };
 
-    setMessages((prev) => [...prev, userMessage]);
+    const assistantMessage: Message = {
+      role: 'assistant',
+      content: '',
+    };
+
+    // Add both messages at once to avoid potential state synchronization issues
+    setMessages((prev) => [...prev, userMessage, assistantMessage]);
     setIsLoading(true);
     const controller = new AbortController();
     setAbortController(controller);
 
     let newSessionId = currentSessionId;
-    try {
-      const assistantMessage: Message = {
-        role: 'assistant',
-        content: '',
+
+    // Gather settings based on provider
+    let currentSettings: any = {};
+    if (selectedProvider === 'doubao') {
+      currentSettings = {
+        ...doubaoSettings,
+        stop: doubaoSettings.stop ? doubaoSettings.stop.split(',').map(s => s.trim()) : undefined,
       };
+    } else if (selectedProvider === 'deepseek') {
+      currentSettings = {
+        ...deepseekSettings,
+        stop: deepseekSettings.stop ? deepseekSettings.stop.split(',').map(s => s.trim()) : undefined,
+      };
+    } else {
+      // Fallback to deepseek settings as default for other providers (common basic settings)
+      currentSettings = {
+        ...deepseekSettings,
+        stop: deepseekSettings.stop ? deepseekSettings.stop.split(',').map(s => s.trim()) : undefined,
+      };
+    }
 
-      setMessages((prev) => [...prev, assistantMessage]);
-
+    try {
       const request = {
         provider: selectedProvider,
         model: selectedModel,
@@ -146,15 +168,18 @@ function App() {
         stream: true,
         session_id: currentSessionId || undefined,
         title: currentSessionId ? undefined : content.substring(0, 50),
-        ...(selectedProvider === 'deepseek' ? {
-          temperature: deepseekSettings.temperature,
-          max_tokens: deepseekSettings.max_tokens,
-          frequency_penalty: deepseekSettings.frequency_penalty,
-          presence_penalty: deepseekSettings.presence_penalty,
-          top_p: deepseekSettings.top_p,
-          stop: deepseekSettings.stop ? deepseekSettings.stop.split(',').map(s => s.trim()) : undefined,
-          system_prompt: deepseekSettings.system_prompt || undefined,
-        } : {}),
+        // Common basic settings
+        temperature: currentSettings.temperature,
+        max_tokens: currentSettings.max_tokens,
+        frequency_penalty: currentSettings.frequency_penalty,
+        presence_penalty: currentSettings.presence_penalty,
+        top_p: currentSettings.top_p,
+        stop: currentSettings.stop,
+        system_prompt: currentSettings.system_prompt || undefined,
+        // Doubao-specific settings
+        thinking: currentSettings.thinking,
+        reasoning_effort: currentSettings.reasoning_effort,
+        max_completion_tokens: currentSettings.max_completion_tokens,
       };
 
       for await (const chunk of apiClient.chatStream(request, controller.signal)) {
@@ -331,8 +356,14 @@ function App() {
         onClose={() => setShowSettings(false)}
         provider={selectedProvider}
         modelId={selectedModel}
-        settings={deepseekSettings}
-        onSettingsChange={setDeepseekSettings}
+        settings={selectedProvider === 'doubao' ? doubaoSettings : deepseekSettings}
+        onSettingsChange={(newSettings) => {
+          if (selectedProvider === 'doubao') {
+            setDoubaoSettings(newSettings);
+          } else {
+            setDeepseekSettings(newSettings);
+          }
+        }}
       />
     </div>
   );

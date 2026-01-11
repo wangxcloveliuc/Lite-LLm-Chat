@@ -17,14 +17,40 @@ class DoubaoClient(OpenAICompatibleClient):
 
     async def chat(self, model: str, *args, **kwargs):
         extra_body = kwargs.pop("extra_body", {})
-        if model.startswith("deepseek-v3-1") or model.startswith("deepseek-v3-2"):
-            extra_body = {"thinking": {"type": "enabled"}}
+        thinking = kwargs.pop("thinking", None)
+        reasoning_effort = kwargs.pop("reasoning_effort", None)
+        max_completion_tokens = kwargs.pop("max_completion_tokens", None)
+
+        if thinking is True:
+            extra_body["thinking"] = {"type": "enabled"}
+        elif thinking is False:
+            extra_body["thinking"] = {"type": "disabled"}
+        
+        if reasoning_effort:
+            extra_body["reasoning_effort"] = reasoning_effort
+        
+        if max_completion_tokens is not None:
+            kwargs["max_completion_tokens"] = max_completion_tokens
+
         return await super().chat(model, *args, extra_body=extra_body, **kwargs)
 
     async def stream_chat(self, model: str, *args, **kwargs):
         extra_body = kwargs.pop("extra_body", {})
-        if model.startswith("deepseek-v3-1") or model.startswith("deepseek-v3-2"):
-            extra_body = {"thinking": {"type": "enabled"}}
+        thinking = kwargs.pop("thinking", None)
+        reasoning_effort = kwargs.pop("reasoning_effort", None)
+        max_completion_tokens = kwargs.pop("max_completion_tokens", None)
+
+        if thinking is True:
+            extra_body["thinking"] = {"type": "enabled"}
+        elif thinking is False:
+            extra_body["thinking"] = {"type": "disabled"}
+            
+        if reasoning_effort:
+            extra_body["reasoning_effort"] = reasoning_effort
+            
+        if max_completion_tokens is not None:
+            kwargs["max_completion_tokens"] = max_completion_tokens
+
         async for chunk in super().stream_chat(model, *args, extra_body=extra_body, **kwargs):
             yield chunk
 

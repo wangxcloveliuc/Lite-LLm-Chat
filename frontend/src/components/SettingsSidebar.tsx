@@ -1,13 +1,13 @@
 import React, { useEffect, useRef } from 'react';
-import type { DeepSeekSettings } from '../types';
+import type { DeepSeekSettings, DoubaoSettings } from '../types';
 
 interface SettingsSidebarProps {
   isOpen: boolean;
   onClose: () => void;
   provider: string;
   modelId: string;
-  settings: DeepSeekSettings;
-  onSettingsChange: (settings: DeepSeekSettings) => void;
+  settings: DeepSeekSettings | DoubaoSettings;
+  onSettingsChange: (settings: any) => void;
 }
 
 const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
@@ -46,17 +46,17 @@ const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
 
   if (!isOpen) return null;
 
-  const isThinkingModel = (modelId || '') === 'deepseek-reasoner';
-  const maxTokensLimit = isThinkingModel ? 65536 : 8192;
-  const defaultTokens = isThinkingModel ? 32768 : 4096;
-  const contextLength = "128K";
+  const isDeepSeek = provider === 'deepseek';
+  const isDoubao = provider === 'doubao';
 
-  const handleChange = (field: keyof DeepSeekSettings, value: any) => {
+  const handleChange = (field: string, value: any) => {
     onSettingsChange({
       ...settings,
       [field]: value,
     });
   };
+
+  const doubaoSettings = settings as DoubaoSettings;
 
   return (
     <div className="settings-sidebar" ref={sidebarRef}>
@@ -82,18 +82,71 @@ const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
       </div>
 
       <div className="settings-content" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-        {provider === 'deepseek' ? (
+        {isDeepSeek || isDoubao ? (
           <>
-            <div className="provider-info" style={{ marginBottom: '8px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h3 style={{ fontSize: '14px', fontWeight: '600', color: '#6B7280', textTransform: 'uppercase' }}>
-                  DeepSeek {isThinkingModel ? 'Reasoner' : 'Chat'}
-                </h3>
-                <span style={{ fontSize: '12px', background: '#E5E7EB', padding: '2px 6px', borderRadius: '4px', color: '#374151' }}>
-                  {contextLength} Context
-                </span>
-              </div>
-            </div>
+            {isDoubao && (
+              <>
+                <div className="setting-group">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <label style={{ fontSize: '14px', fontWeight: '500', cursor: 'pointer' }}>
+                      Thinking Mode
+                    </label>
+                    <select
+                      value={doubaoSettings.thinking === undefined ? 'default' : (doubaoSettings.thinking ? 'enabled' : 'disabled')}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        handleChange('thinking', val === 'default' ? undefined : val === 'enabled');
+                      }}
+                      style={{ padding: '4px 8px', border: '1px solid #E5E7EB', borderRadius: '4px', fontSize: '14px' }}
+                    >
+                      <option value="default">Default</option>
+                      <option value="enabled">Enabled</option>
+                      <option value="disabled">Disabled</option>
+                    </select>
+                  </div>
+                  <p style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+                    Enable deep reasoning for supported models.
+                  </p>
+                </div>
+
+                <div className="setting-group">
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>
+                    Reasoning Effort
+                  </label>
+                  <select
+                    value={doubaoSettings.reasoning_effort || 'medium'}
+                    onChange={(e) => handleChange('reasoning_effort', e.target.value)}
+                    style={{ width: '100%', padding: '8px', border: '1px solid #E5E7EB', borderRadius: '4px', fontSize: '14px' }}
+                  >
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                  </select>
+                  <p style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+                    Adjust the depth of reasoning process.
+                  </p>
+                </div>
+
+                <div className="setting-group">
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>
+                    Max Completion Tokens
+                  </label>
+                  <input
+                    type="number"
+                    placeholder="Unlimited"
+                    value={doubaoSettings.max_completion_tokens || ''}
+                    onChange={(e) => {
+                      const val = e.target.value === '' ? undefined : parseInt(e.target.value);
+                      handleChange('max_completion_tokens', val);
+                    }}
+                    style={{ width: '100%', padding: '8px', border: '1px solid #E5E7EB', borderRadius: '4px' }}
+                  />
+                  <p style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+                    Maximum tokens allowed for the reasoning and response combined.
+                  </p>
+                </div>
+              </>
+            )}
 
             <div className="setting-group">
               <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>
@@ -130,24 +183,17 @@ const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
             </div>
 
             <div className="setting-group">
-              <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>
-                Max Tokens (Max: {maxTokensLimit / 1024}K)
-              </label>
               <input
                 type="number"
                 min="1"
-                max={maxTokensLimit}
-                value={settings.max_tokens}
+                placeholder="Unlimited"
+                value={settings.max_tokens || ''}
                 onChange={(e) => {
-                  let val = parseInt(e.target.value) || 0;
-                  if (val > maxTokensLimit) val = maxTokensLimit;
+                  const val = e.target.value === '' ? undefined : parseInt(e.target.value);
                   handleChange('max_tokens', val);
                 }}
                 style={{ width: '100%', padding: '8px', border: '1px solid #E5E7EB', borderRadius: '4px' }}
               />
-              <p style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
-                Default is {defaultTokens / 1024}K tokens for this model.
-              </p>
             </div>
 
             <div className="setting-group">

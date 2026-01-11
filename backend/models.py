@@ -105,6 +105,10 @@ class ChatRequest(BaseModel):
     stop: Optional[List[str]] = None
     title: Optional[str] = None
     system_prompt: Optional[str] = None
+    # Extended settings for specific providers (e.g., Doubao, DeepSeek)
+    thinking: Optional[bool] = None
+    reasoning_effort: Optional[str] = None
+    max_completion_tokens: Optional[int] = Field(default=None, ge=1)
 
 
 class ChatResponse(BaseModel):

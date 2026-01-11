@@ -36,12 +36,18 @@ export interface Session {
 
 export interface DeepSeekSettings {
   frequency_penalty: number;
-  max_tokens: number;
+  max_tokens?: number;
   presence_penalty: number;
   temperature: number;
   top_p: number;
   stop: string;
   system_prompt: string;
+}
+
+export interface DoubaoSettings extends DeepSeekSettings {
+  thinking?: boolean;
+  reasoning_effort?: 'low' | 'medium' | 'high';
+  max_completion_tokens?: number;
 }
 
 export interface ChatRequest {
@@ -60,6 +66,10 @@ export interface ChatRequest {
   message_model?: string;
   title?: string;
   system_prompt?: string;
+  // Extended settings
+  thinking?: boolean;
+  reasoning_effort?: string;
+  max_completion_tokens?: number;
 }
 
 export interface StreamChunk {

@@ -131,6 +131,7 @@ class GeminiClient(BaseClient):
         messages: List[Dict[str, str]],
         temperature: float = 1,
         max_tokens: Optional[int] = None,
+        **kwargs,
     ) -> AsyncIterator[str]:
         try:
             contents, system_instruction = self._messages_to_contents_and_system(messages)
@@ -180,6 +181,7 @@ class GeminiClient(BaseClient):
         messages: List[Dict[str, str]],
         temperature: float = 1,
         max_tokens: Optional[int] = None,
+        **kwargs,
     ) -> Tuple[str, str]:
         try:
             contents, system_instruction = self._messages_to_contents_and_system(messages)

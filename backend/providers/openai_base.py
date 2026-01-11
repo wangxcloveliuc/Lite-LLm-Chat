@@ -58,6 +58,13 @@ class OpenAICompatibleClient(BaseClient):
         **kwargs,
     ) -> Tuple[str, str]:
         try:
+            # Clean up kwargs to remove custom parameters not supported by the base OpenAI SDK.
+            # These should be handled by specific provider subclasses (like DoubaoClient) 
+            # by moving them to extra_body or popping them before calling super().
+            sanitized_kwargs = kwargs.copy()
+            for key in ["thinking", "reasoning_effort"]:
+                sanitized_kwargs.pop(key, None)
+
             response = self.client.chat.completions.create(
                 model=model,
                 messages=messages,
@@ -65,7 +72,7 @@ class OpenAICompatibleClient(BaseClient):
                 max_tokens=max_tokens,
                 stream=False,
                 extra_body=extra_body,
-                **kwargs,
+                **sanitized_kwargs,
             )
 
             msg = response.choices[0].message
@@ -85,6 +92,13 @@ class OpenAICompatibleClient(BaseClient):
         **kwargs,
     ) -> AsyncIterator[str]:
         try:
+            # Clean up kwargs to remove custom parameters not supported by the base OpenAI SDK
+            sanitized_kwargs = kwargs.copy()
+            for key in ["thinking", "reasoning_effort"]:
+                sanitized_kwargs.pop(key, None)
+
+            print(extra_body)
+
             response = self.client.chat.completions.create(
                 model=model,
                 messages=messages,
@@ -92,7 +106,7 @@ class OpenAICompatibleClient(BaseClient):
                 max_tokens=max_tokens,
                 stream=True,
                 extra_body=extra_body,
-                **kwargs,
+                **sanitized_kwargs,
             )
 
             for chunk in response:

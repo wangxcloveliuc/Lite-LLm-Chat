@@ -392,15 +392,27 @@ async def chat_completion(
             full_reasoning = ""
             failed = False
             try:
+                # Prepare provider-specific arguments, filtering out None values for optional extended settings
+                provider_kwargs = {
+                    "temperature": chat_request.temperature,
+                    "max_tokens": chat_request.max_tokens,
+                    "frequency_penalty": chat_request.frequency_penalty,
+                    "presence_penalty": chat_request.presence_penalty,
+                    "top_p": chat_request.top_p,
+                    "stop": chat_request.stop,
+                }
+                
+                if chat_request.thinking is not None:
+                    provider_kwargs["thinking"] = chat_request.thinking
+                if chat_request.reasoning_effort is not None:
+                    provider_kwargs["reasoning_effort"] = chat_request.reasoning_effort
+                if chat_request.max_completion_tokens is not None:
+                    provider_kwargs["max_completion_tokens"] = chat_request.max_completion_tokens
+
                 stream = provider_client.stream_chat(
                     model=model_id,
                     messages=api_messages,
-                    temperature=chat_request.temperature,
-                    max_tokens=chat_request.max_tokens,
-                    frequency_penalty=chat_request.frequency_penalty,
-                    presence_penalty=chat_request.presence_penalty,
-                    top_p=chat_request.top_p,
-                    stop=chat_request.stop,
+                    **provider_kwargs
                 )
 
                 client_gone = False
@@ -501,15 +513,27 @@ async def chat_completion(
     # Non-streaming response
     else:
         try:
+            # Prepare provider-specific arguments, filtering out None values for optional extended settings
+            provider_kwargs = {
+                "temperature": chat_request.temperature,
+                "max_tokens": chat_request.max_tokens,
+                "frequency_penalty": chat_request.frequency_penalty,
+                "presence_penalty": chat_request.presence_penalty,
+                "top_p": chat_request.top_p,
+                "stop": chat_request.stop,
+            }
+            
+            if chat_request.thinking is not None:
+                provider_kwargs["thinking"] = chat_request.thinking
+            if chat_request.reasoning_effort is not None:
+                provider_kwargs["reasoning_effort"] = chat_request.reasoning_effort
+            if chat_request.max_completion_tokens is not None:
+                provider_kwargs["max_completion_tokens"] = chat_request.max_completion_tokens
+
             response_content, reasoning_content = await provider_client.chat(
                 model=model_id,
                 messages=api_messages,
-                temperature=chat_request.temperature,
-                max_tokens=chat_request.max_tokens,
-                frequency_penalty=chat_request.frequency_penalty,
-                presence_penalty=chat_request.presence_penalty,
-                top_p=chat_request.top_p,
-                stop=chat_request.stop,
+                **provider_kwargs
             )
         except Exception as e:
             raise HTTPException(
