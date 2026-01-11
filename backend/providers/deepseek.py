@@ -1,4 +1,4 @@
-from typing import List, Dict
+from typing import List
 from .base import BaseLLMProvider
 
 
@@ -12,21 +12,10 @@ class DeepSeekProvider(BaseLLMProvider):
         from .deepseek_client import deepseek_client
         super().__init__(deepseek_client)
 
-    async def list_models(self) -> List[Dict[str, object]]:
-        # Hardcoded for now as DeepSeek list models might return many non-chat models
+    def _get_fallback_models(self) -> List[str]:
         return [
-            {
-                "id": "deepseek-chat",
-                "name": "DeepSeek Chat",
-                "provider": "deepseek",
-                "description": "DeepSeek's flagship conversational model",
-            },
-            {
-                "id": "deepseek-reasoner",
-                "name": "DeepSeek Reasoner",
-                "provider": "deepseek",
-                "description": "DeepSeek's advanced reasoning model",
-            },
+            "deepseek-chat",
+            "deepseek-reasoner",
         ]
 
 
