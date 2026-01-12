@@ -1,5 +1,8 @@
 import json
 import httpx
+import base64
+import os
+import mimetypes
 from openai import OpenAI
 from typing import List, Dict, AsyncIterator, Optional, Tuple
 from .base import BaseClient
@@ -48,6 +51,52 @@ class OpenAICompatibleClient(BaseClient):
         
         return ""
 
+    def _process_messages(self, messages: List[Dict]) -> List[Dict]:
+        """Process messages to convert local image URLs to data URIs."""
+        new_messages = []
+        for msg in messages:
+            role = msg.get("role")
+            content = msg.get("content")
+            
+            if isinstance(content, list):
+                new_parts = []
+                for part in content:
+                    if part.get("type") == "image_url" and "image_url" in part:
+                        url = part["image_url"].get("url", "")
+                        if url and url.startswith("/uploads/"):
+                            # Resolve local path
+                            try:
+                                # Start from the directory where this file resides
+                                # providers/ -> backend/
+                                current_dir = os.path.dirname(os.path.abspath(__file__))
+                                backend_dir = os.path.dirname(current_dir)
+                                
+                                # Remove leading slash and join
+                                # e.g. "uploads/xxx.jpg"
+                                relative_path = url.lstrip("/")
+                                local_path = os.path.join(backend_dir, relative_path)
+                                
+                                if os.path.exists(local_path):
+                                    mime_type, _ = mimetypes.guess_type(local_path)
+                                    if not mime_type:
+                                        mime_type = "image/jpeg"
+                                    with open(local_path, "rb") as image_file:
+                                        base64_image = base64.b64encode(image_file.read()).decode('utf-8')
+                                        # Update the part with data URI
+                                        new_part = part.copy()
+                                        new_part["image_url"] = {"url": f"data:{mime_type};base64,{base64_image}"}
+                                        new_parts.append(new_part)
+                                        continue
+                                else:
+                                    print(f"[OpenAIClient] Image not found: {local_path}")
+                            except Exception as e:
+                                print(f"[OpenAIClient] Error processing image {url}: {e}")
+                    new_parts.append(part)
+                new_messages.append({"role": role, "content": new_parts})
+            else:
+                new_messages.append(msg)
+        return new_messages
+
     async def chat(
         self,
         model: str,
@@ -58,16 +107,16 @@ class OpenAICompatibleClient(BaseClient):
         **kwargs,
     ) -> Tuple[str, str]:
         try:
-            # Clean up kwargs to remove custom parameters not supported by the base OpenAI SDK.
-            # These should be handled by specific provider subclasses (like DoubaoClient) 
-            # by moving them to extra_body or popping them before calling super().
+            # Clean up kwargs
             sanitized_kwargs = kwargs.copy()
             for key in ["thinking", "reasoning_effort"]:
                 sanitized_kwargs.pop(key, None)
 
+            processed_messages = self._process_messages(messages)
+
             response = self.client.chat.completions.create(
                 model=model,
-                messages=messages,
+                messages=processed_messages,
                 temperature=temperature,
                 max_tokens=max_tokens,
                 stream=False,
@@ -97,11 +146,11 @@ class OpenAICompatibleClient(BaseClient):
             for key in ["thinking", "reasoning_effort"]:
                 sanitized_kwargs.pop(key, None)
 
-            print(extra_body)
+            processed_messages = self._process_messages(messages)
 
             response = self.client.chat.completions.create(
                 model=model,
-                messages=messages,
+                messages=processed_messages,
                 temperature=temperature,
                 max_tokens=max_tokens,
                 stream=True,

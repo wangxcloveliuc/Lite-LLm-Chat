@@ -159,3 +159,6 @@ tmp/
 temp/
 *.tmp
 *.temp
+
+# Upload files
+uploads/

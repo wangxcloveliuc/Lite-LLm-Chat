@@ -3,13 +3,18 @@ FastAPI Backend for Lite-LLM-Chat
 """
 
 import asyncio
+import os
+import uuid
+import shutil
+import json
+from datetime import datetime, timezone
 
-from fastapi import FastAPI, Depends, HTTPException, Request, status
+from fastapi import FastAPI, Depends, HTTPException, Request, status, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
-from typing import List
-from datetime import datetime, timezone
+from typing import List, Optional
 from contextlib import asynccontextmanager
 
 from config import settings
@@ -58,6 +63,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Ensure upload directory exists
+UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "uploads")
+if not os.path.exists(UPLOAD_DIR):
+    os.makedirs(UPLOAD_DIR)
+
+# Mount the uploads directory to serve static files
+app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
+
 
 # ==================== Provider Endpoints ====================
 
@@ -80,6 +93,33 @@ async def get_models(provider: str = None):
         provider: Optional filter by provider ID
     """
     return [Model(**m) for m in await registry_list_models(provider=provider)]
+
+
+# ==================== Upload Endpoints ====================
+
+
+@app.post(f"{settings.api_prefix}/upload")
+async def upload_file(file: UploadFile = File(...)):
+    """
+    Upload a file (image) and return its URL
+    """
+    # Create unique filename
+    file_ext = os.path.splitext(file.filename)[1]
+    unique_filename = f"{uuid.uuid4()}{file_ext}"
+    file_path = os.path.join(UPLOAD_DIR, unique_filename)
+
+    # Save file
+    try:
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to upload file: {str(e)}",
+        )
+
+    # Return URL (relative to base URL)
+    return {"url": f"/uploads/{unique_filename}"}
 
 
 # ==================== Session Endpoints ====================
@@ -146,6 +186,21 @@ async def get_session_detail(session_id: int, db: Session = Depends(get_db)):
         .all()
     )
 
+    # Pre-process messages to handle SQLite JSON columns
+    processed_messages = []
+    for msg in session_messages:
+        msg_dict = {
+            "id": msg.id,
+            "role": msg.role,
+            "content": msg.content,
+            "provider": msg.provider,
+            "model": msg.model,
+            "thought_process": msg.thought_process,
+            "created_at": msg.created_at,
+            "images": msg.images if not isinstance(msg.images, str) else (json.loads(msg.images) if msg.images else []),
+        }
+        processed_messages.append(MessageResponse(**msg_dict))
+
     return SessionDetailResponse(
         id=session.id,
         title=session.title,
@@ -154,7 +209,7 @@ async def get_session_detail(session_id: int, db: Session = Depends(get_db)):
         created_at=session.created_at,
         updated_at=session.updated_at,
         message_count=len(session_messages),
-        messages=[MessageResponse.model_validate(msg) for msg in session_messages],
+        messages=processed_messages,
     )
 
 
@@ -347,17 +402,48 @@ async def chat_completion(
         .all()
     )
 
+    # Helper to ensure images is a list (handles SQLite JSON as string)
+    def ensure_list(data):
+        if data is None:
+            return None
+        if isinstance(data, str):
+            try:
+                return json.loads(data)
+            except:
+                return [data] if data else []
+        return data
+
     # Prepare incoming messages (only user/system).
-    incoming_tuples = [
-        (msg.role, msg.content)
+    # Each tuple is (role, content, images)
+    incoming_data = [
+        (msg.role, msg.content, ensure_list(msg.images))
         for msg in chat_request.messages
         if msg.role in ("user", "system")
     ]
 
+    # Helper to format content for API (multi-modal support)
+    def format_api_content(content: str, images: Optional[List[str]]):
+        images = ensure_list(images)
+        if not images:
+            return content
+        
+        parts = [{"type": "text", "text": content}]
+        for img_url in images:
+            img_part = {
+                "type": "image_url",
+                "image_url": {"url": img_url}
+            }
+            parts.append(img_part)
+        return parts
+
     # Build API messages from full context (existing + deduped incoming) but DO NOT persist incoming messages yet
     api_messages = [
-        {"role": m.role, "content": m.content} for m in existing_messages
-    ] + [{"role": r, "content": c} for r, c in incoming_tuples]
+        {"role": m.role, "content": format_api_content(m.content, m.images)} 
+        for m in existing_messages
+    ] + [
+        {"role": r, "content": format_api_content(c, i)} 
+        for r, c, i in incoming_data
+    ]
 
     # Add system prompt at the beginning if provided
     if chat_request.system_prompt:
@@ -365,17 +451,24 @@ async def chat_completion(
             {"role": "system", "content": chat_request.system_prompt}
         ] + api_messages
 
-    # Keep in-memory ChatMessage objects for deduped incoming messages to persist later if the model call succeeds
+    # Keep in-memory ChatMessage objects for deduped incoming messages
     incoming_msg_objects = [
         ChatMessage(
             session_id=session.id,
             role=r,
             content=c,
+            images=i, # Pass list directly, SQLAlchemy JSON type handles it
             provider=provider_id,
             model=model_id,
         )
-        for r, c in incoming_tuples
+        for r, c, i in incoming_data
     ]
+
+    # Persist incoming messages immediately so they aren't lost if the model call fails
+    if incoming_msg_objects:
+        db.add_all(incoming_msg_objects)
+        session.updated_at = datetime.now(timezone.utc)
+        db.commit()
 
     # Stream response
     if chat_request.stream:
@@ -483,15 +576,13 @@ async def chat_completion(
                 yield f"data: {json.dumps({'error': str(e)})}\n\n"
                 return
 
-            # If the stream signalled an error, do not persist
+            # If the stream signalled an error, do not persist assistant reply
             if failed:
                 return
 
-            # Persist incoming messages and the assistant reply atomically, only if assistant produced content
+            # Persist the assistant reply, only if assistant produced content
             try:
                 if full_response:
-                    if incoming_msg_objects:
-                        db.add_all(incoming_msg_objects)
                     assistant_message = ChatMessage(
                         session_id=session.id,
                         role="assistant",
@@ -507,7 +598,7 @@ async def chat_completion(
                     db.commit()
             except Exception as e:
                 # If saving fails, notify client
-                yield f"data: {json.dumps({'error': 'Failed to save messages'})}\n\n"
+                yield f"data: {json.dumps({'error': 'Failed to save assistant response'})}\n\n"
 
         headers = {
             "Cache-Control": "no-cache",
@@ -557,15 +648,13 @@ async def chat_completion(
                 detail=f"Provider error: {str(e)}",
             )
 
-        # Persist incoming messages and assistant response atomically only if assistant produced content
+        # Persist assistant response only if assistant produced content
         if not response_content:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Empty response from provider",
             )
         try:
-            if incoming_msg_objects:
-                db.add_all(incoming_msg_objects)
             assistant_message = ChatMessage(
                 session_id=session.id,
                 role="assistant",
@@ -583,7 +672,7 @@ async def chat_completion(
         except Exception as e:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to save messages",
+                detail="Failed to save assistant message",
             )
 
         return ChatResponse(

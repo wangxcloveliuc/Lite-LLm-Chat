@@ -109,6 +109,41 @@ class APIClient {
     }
   }
 
+  async uploadImage(file: File, onProgress?: (percent: number) => void): Promise<string | null> {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      const formData = new FormData();
+      formData.append('file', file);
+
+      xhr.upload.addEventListener('progress', (event) => {
+        if (event.lengthComputable && onProgress) {
+          const percent = Math.round((event.loaded / event.total) * 100);
+          onProgress(percent);
+        }
+      });
+
+      xhr.onreadystatechange = () => {
+        if (xhr.readyState === 4) {
+          if (xhr.status === 200) {
+            try {
+              const data = JSON.parse(xhr.responseText);
+              resolve(data.url);
+            } catch {
+              reject(new Error('Failed to parse response'));
+            }
+          } else {
+            reject(new Error('Upload failed'));
+          }
+        }
+      };
+
+      xhr.onerror = () => reject(new Error('Network error'));
+
+      xhr.open('POST', this.url('/upload'));
+      xhr.send(formData);
+    });
+  }
+
   async deleteSession(sessionId: number): Promise<boolean> {
     try {
       const response = await fetch(this.url(`/sessions/${sessionId}`), {

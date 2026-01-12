@@ -33,6 +33,7 @@ class MessageCreate(BaseModel):
 
     role: str = Field(..., pattern="^(user|assistant|system)$")
     content: str
+    images: Optional[List[str]] = None
 
 
 class MessageResponse(BaseModel):
@@ -41,6 +42,7 @@ class MessageResponse(BaseModel):
     id: int
     role: str
     content: str
+    images: Optional[List[str]] = None
     provider: Optional[str] = None
     model: Optional[str] = None
     thought_process: Optional[str] = None

@@ -1,7 +1,7 @@
 """
 Database models and setup
 """
-from sqlalchemy import create_engine, Column, Integer, String, Text, DateTime, ForeignKey
+from sqlalchemy import create_engine, Column, Integer, String, Text, DateTime, ForeignKey, JSON
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 from datetime import datetime, timezone
@@ -40,6 +40,7 @@ class ChatMessage(Base):
     session_id = Column(Integer, ForeignKey("chat_sessions.id"), nullable=False)
     role = Column(String(20), nullable=False)  # 'user', 'assistant', 'system'
     content = Column(Text, nullable=False)
+    images = Column(JSON, nullable=True)  # List of image URLs/paths
     thought_process = Column(Text, nullable=True)  # For reasoning/thinking content from inference models
     provider = Column(String(50), nullable=True)
     model = Column(String(100), nullable=True)
@@ -63,6 +64,8 @@ def init_db():
             conn.exec_driver_sql("ALTER TABLE chat_messages ADD COLUMN model VARCHAR(100)")
         if "thought_process" not in existing_cols:
             conn.exec_driver_sql("ALTER TABLE chat_messages ADD COLUMN thought_process TEXT")
+        if "images" not in existing_cols:
+            conn.exec_driver_sql("ALTER TABLE chat_messages ADD COLUMN images TEXT")
 
 
 def get_db():

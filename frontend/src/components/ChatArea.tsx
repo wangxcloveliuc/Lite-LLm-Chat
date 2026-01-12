@@ -4,17 +4,27 @@ import remarkGfm from 'remark-gfm';
 import remarkBreaks from 'remark-breaks';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { apiClient } from '../api/apiClient';
 import type { Message } from '../types';
 
 interface ChatAreaProps {
   messages: Message[];
   isLoading: boolean;
   isChatActive: boolean;
-  onSendMessage: (content: string) => void;
+  onSendMessage: (content: string, imageUrls?: string[]) => void;
   onStopMessage: () => void;
   onEditMessage: (index: number, content: string) => void;
   onRefreshMessage: (index: number) => void;
 }
+
+const getFullImageUrl = (url: string) => {
+  if (url.startsWith('http') || url.startsWith('data:')) {
+    return url;
+  }
+  const baseUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';
+  const cleanBaseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+  return `${cleanBaseUrl}${url.startsWith('/') ? '' : '/'}${url}`;
+};
 
 function ChatMessage({ 
   message, 
@@ -104,6 +114,19 @@ function ChatMessage({
                 </ReactMarkdown>
               </div>
             )}
+          </div>
+        )}
+        {message.images && message.images.length > 0 && (
+          <div className="message-images">
+            {message.images.map((url, i) => (
+              <img 
+                key={i} 
+                src={getFullImageUrl(url)} 
+                alt="attachment" 
+                className="message-image" 
+                onClick={() => window.open(getFullImageUrl(url), '_blank')}
+              />
+            ))}
           </div>
         )}
         <div className="message-content">
@@ -212,8 +235,10 @@ export default function ChatArea({
   onRefreshMessage,
 }: ChatAreaProps) {
   const [input, setInput] = useState('');
+  const [pendingImages, setPendingImages] = useState<{ id: string; url?: string; progress: number; file: File; blobUrl: string }[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -223,14 +248,58 @@ export default function ChatArea({
     scrollToBottom();
   }, [messages]);
 
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    const newPending = Array.from(files).map(file => ({
+      id: Math.random().toString(36).substring(7),
+      file,
+      progress: 0,
+      blobUrl: URL.createObjectURL(file)
+    }));
+
+    setPendingImages(prev => [...prev, ...newPending]);
+
+    // Reset file input so same file can be selected again if needed
+    if (fileInputRef.current) fileInputRef.current.value = '';
+
+    // Start uploads
+    for (const item of newPending) {
+      try {
+        const url = await apiClient.uploadImage(item.file, (progress) => {
+          setPendingImages(prev => prev.map(p => p.id === item.id ? { ...p, progress } : p));
+        });
+        if (url) {
+          setPendingImages(prev => prev.map(p => p.id === item.id ? { ...p, url, progress: 100 } : p));
+        }
+      } catch (err) {
+        console.error('Upload failed', err);
+        setPendingImages(prev => prev.filter(p => p.id !== item.id));
+      }
+    }
+  };
+
+  const removePendingImage = (id: string) => {
+    setPendingImages(prev => {
+      const item = prev.find(p => p.id === id);
+      if (item) URL.revokeObjectURL(item.blobUrl);
+      return prev.filter(p => p.id !== id);
+    });
+  };
+
   const handleSubmit = () => {
     if (isLoading) {
       onStopMessage();
       return;
     }
-    if (input.trim()) {
-      onSendMessage(input);
+    if (input.trim() || pendingImages.some(img => img.url)) {
+      const imageUrls = pendingImages.filter(img => img.url).map(img => img.url!);
+      onSendMessage(input, imageUrls);
       setInput('');
+      // Clean up blob URLs
+      pendingImages.forEach(img => URL.revokeObjectURL(img.blobUrl));
+      setPendingImages([]);
     }
   };
 
@@ -277,8 +346,31 @@ export default function ChatArea({
       </div>
 
       <div className={`input-container ${isChatActive ? 'chat-active' : ''}`}>
+        {pendingImages.length > 0 && (
+          <div className="pending-images-bar">
+            {pendingImages.map((img) => (
+              <div key={img.id} className="pending-image-container">
+                <img src={img.blobUrl} alt="pending" className="pending-image" />
+                {img.progress < 100 && (
+                  <div className="upload-progress-overlay">
+                    <div className="progress-ring" style={{ '--progress': `${img.progress}%` } as any}></div>
+                  </div>
+                )}
+                <button className="remove-image-btn" onClick={() => removePendingImage(img.id)}>×</button>
+              </div>
+            ))}
+          </div>
+        )}
         <div className="input-bar">
-          <button className="attachment-btn" onClick={() => inputRef.current?.focus()}>
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileChange}
+            style={{ display: 'none' }}
+            multiple
+            accept="image/*"
+          />
+          <button className="attachment-btn" onClick={() => fileInputRef.current?.click()}>
             <svg
               className="icon"
               viewBox="0 0 24 24"
@@ -302,7 +394,7 @@ export default function ChatArea({
           <button
             className={`send-btn ${isLoading ? 'stop' : ''}`}
             onClick={handleSubmit}
-            disabled={!isLoading && !input.trim()}
+            disabled={!isLoading && !input.trim() && !pendingImages.some(img => img.url)}
           >
             {isLoading ? (
               <div className="stop-icon"></div>

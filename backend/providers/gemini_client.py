@@ -1,5 +1,8 @@
 from typing import List, Dict, AsyncIterator, Optional, Tuple
 import json
+import base64
+import os
+import mimetypes
 from google import genai
 from google.genai import types
 
@@ -72,12 +75,52 @@ class GeminiClient(BaseClient):
             else:
                 g_role = "user"
 
-            contents.append(
-                {
-                    "role": g_role,
-                    "parts": [{"text": content}],
-                }
-            )
+            if isinstance(content, list):
+                parts = []
+                for part in content:
+                    if part.get("type") == "text":
+                        parts.append({"text": part.get("text") or ""})
+                    elif part.get("type") == "image_url":
+                        url = part.get("image_url", {}).get("url")
+                        if url and url.startswith("/uploads/"):
+                            try:
+                                current_dir = os.path.dirname(os.path.abspath(__file__))
+                                backend_dir = os.path.dirname(current_dir)
+                                relative_path = url.lstrip("/")
+                                local_path = os.path.join(backend_dir, relative_path)
+                                
+                                if os.path.exists(local_path):
+                                    mime_type, _ = mimetypes.guess_type(local_path)
+                                    if not mime_type:
+                                        mime_type = "image/jpeg"
+                                    with open(local_path, "rb") as image_file:
+                                        parts.append({
+                                            "inline_data": {
+                                                "mime_type": mime_type,
+                                                "data": base64.b64encode(image_file.read()).decode('utf-8')
+                                            }
+                                        })
+                                else:
+                                    print(f"[GeminiClient] Image not found: {local_path}")
+                            except Exception as e:
+                                print(f"[GeminiClient] Error reading image {url}: {e}")
+                        elif url and url.startswith("http"):
+                             # Gemini google-genai SDK might not support remote URLs in inline_data easily
+                             # For now, we skip or could fetch + base64 if needed.
+                             pass
+                contents.append(
+                    {
+                        "role": g_role,
+                        "parts": parts,
+                    }
+                )
+            else:
+                contents.append(
+                    {
+                        "role": g_role,
+                        "parts": [{"text": content}],
+                    }
+                )
 
         system_instruction = "\n".join(system_parts).strip() or None
         return contents, system_instruction

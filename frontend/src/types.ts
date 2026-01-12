@@ -17,6 +17,7 @@ export interface Message {
   id?: number;
   role: 'user' | 'assistant' | 'system';
   content: string;
+  images?: string[];
   created_at?: string;
   provider?: string;
   model?: string;
@@ -60,7 +61,7 @@ export interface SiliconFlowSettings extends DeepSeekSettings {
 export interface ChatRequest {
   provider: string;
   model: string;
-  messages: { role: string; content: string }[];
+  messages: { role: string; content: string; images?: string[] }[];
   stream: boolean;
   temperature?: number;
   max_tokens?: number;

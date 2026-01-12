@@ -132,12 +132,13 @@ function App() {
     }
   };
 
-  const handleSendMessage = async (content: string) => {
+  const handleSendMessage = async (content: string, imageUrls?: string[]) => {
     if (!selectedProvider || !selectedModel) return;
 
     const userMessage: Message = {
       role: 'user',
       content,
+      images: imageUrls,
     };
 
     const assistantMessage: Message = {
@@ -182,7 +183,7 @@ function App() {
       const request = {
         provider: selectedProvider,
         model: selectedModel,
-        messages: [{ role: 'user', content }],
+        messages: [{ role: 'user', content, images: imageUrls }],
         stream: true,
         session_id: currentSessionId || undefined,
         title: currentSessionId ? undefined : content.substring(0, 50),
@@ -249,13 +250,23 @@ function App() {
         console.log('Generation aborted');
       } else {
         console.error('Chat error:', error);
-        setMessages((prev) => [
-          ...prev.slice(0, -1),
-          {
-            role: 'assistant',
-            content: 'Sorry, an error occurred. Please try again.',
-          },
-        ]);
+        setMessages((prev) => {
+          const updated = [...prev];
+          if (updated.length > 0 && updated[updated.length - 1].role === 'assistant') {
+            updated[updated.length - 1] = {
+              role: 'assistant',
+              content: 'Sorry, an error occurred. Please try again.',
+            };
+            return updated;
+          }
+          return [
+            ...prev,
+            {
+              role: 'assistant',
+              content: 'Sorry, an error occurred. Please try again.',
+            },
+          ];
+        });
       }
     } finally {
       setIsLoading(false);
@@ -263,6 +274,8 @@ function App() {
       const sessionIdToRefresh = newSessionId || currentSessionId;
       if (sessionIdToRefresh) {
         loadSessions();
+        // Only refresh messages if it was successful, or if we want to sync with DB
+        // If an error occurred, we might want to keep the local error message
         await refreshMessages(sessionIdToRefresh);
       }
     }
@@ -293,12 +306,12 @@ function App() {
       setMessages(prev => prev.slice(0, index));
       
       // Trigger new message sending
-      handleSendMessage(content);
+      handleSendMessage(content, messageToEdit.images);
     } else {
       // New chat, haven't saved to DB yet
       handleStopGeneration();
       setMessages(prev => prev.slice(0, index));
-      handleSendMessage(content);
+      handleSendMessage(content, messageToEdit.images);
     }
   };
 
@@ -324,12 +337,12 @@ function App() {
       setMessages(prev => prev.slice(0, userMessageIndex));
       
       // Re-send the user message content - this will re-add it to the state and backend
-      handleSendMessage(userMessage.content);
+      handleSendMessage(userMessage.content, userMessage.images);
     } else {
       // New chat, haven't saved to DB yet
       handleStopGeneration();
       setMessages(prev => prev.slice(0, userMessageIndex));
-      handleSendMessage(userMessage.content);
+      handleSendMessage(userMessage.content, userMessage.images);
     }
   };
 
