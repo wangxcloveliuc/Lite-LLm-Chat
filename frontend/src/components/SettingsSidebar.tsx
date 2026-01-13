@@ -14,7 +14,6 @@ const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
   isOpen,
   onClose,
   provider,
-  modelId,
   settings,
   onSettingsChange,
 }) => {
