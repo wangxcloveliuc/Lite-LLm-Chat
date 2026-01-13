@@ -198,6 +198,7 @@ async def get_session_detail(session_id: int, db: Session = Depends(get_db)):
             "thought_process": msg.thought_process,
             "created_at": msg.created_at,
             "images": msg.images if not isinstance(msg.images, str) else (json.loads(msg.images) if msg.images else []),
+            "videos": msg.videos if not isinstance(msg.videos, str) else (json.loads(msg.videos) if msg.videos else []),
         }
         processed_messages.append(MessageResponse(**msg_dict))
 
@@ -414,35 +415,44 @@ async def chat_completion(
         return data
 
     # Prepare incoming messages (only user/system).
-    # Each tuple is (role, content, images)
+    # Each tuple is (role, content, images, videos)
     incoming_data = [
-        (msg.role, msg.content, ensure_list(msg.images))
+        (msg.role, msg.content, ensure_list(msg.images), ensure_list(msg.videos))
         for msg in chat_request.messages
         if msg.role in ("user", "system")
     ]
 
     # Helper to format content for API (multi-modal support)
-    def format_api_content(content: str, images: Optional[List[str]]):
+    def format_api_content(content: str, images: Optional[List[str]], videos: Optional[List[str]] = None):
         images = ensure_list(images)
-        if not images:
+        videos = ensure_list(videos)
+        if not images and not videos:
             return content
         
         parts = [{"type": "text", "text": content}]
-        for img_url in images:
-            img_part = {
-                "type": "image_url",
-                "image_url": {"url": img_url}
-            }
-            parts.append(img_part)
+        if images:
+            for img_url in images:
+                img_part = {
+                    "type": "image_url",
+                    "image_url": {"url": img_url}
+                }
+                parts.append(img_part)
+        if videos:
+            for video_url in videos:
+                video_part = {
+                    "type": "video_url",
+                    "video_url": {"url": video_url}
+                }
+                parts.append(video_part)
         return parts
 
     # Build API messages from full context (existing + deduped incoming) but DO NOT persist incoming messages yet
     api_messages = [
-        {"role": m.role, "content": format_api_content(m.content, m.images)} 
+        {"role": m.role, "content": format_api_content(m.content, m.images, getattr(m, 'videos', None))} 
         for m in existing_messages
     ] + [
-        {"role": r, "content": format_api_content(c, i)} 
-        for r, c, i in incoming_data
+        {"role": r, "content": format_api_content(c, i, v)} 
+        for r, c, i, v in incoming_data
     ]
 
     # Add system prompt at the beginning if provided
@@ -458,10 +468,11 @@ async def chat_completion(
             role=r,
             content=c,
             images=i, # Pass list directly, SQLAlchemy JSON type handles it
+            videos=v,
             provider=provider_id,
             model=model_id,
         )
-        for r, c, i in incoming_data
+        for r, c, i, v in incoming_data
     ]
 
     # Persist incoming messages immediately so they aren't lost if the model call fails
@@ -513,6 +524,8 @@ async def chat_completion(
                     provider_kwargs["image_detail"] = chat_request.image_detail
                 if chat_request.image_pixel_limit is not None:
                     provider_kwargs["image_pixel_limit"] = chat_request.image_pixel_limit.model_dump(exclude_none=True)
+                if chat_request.fps is not None:
+                    provider_kwargs["fps"] = chat_request.fps
 
                 stream = provider_client.stream_chat(
                     model=model_id,
@@ -644,6 +657,8 @@ async def chat_completion(
                 provider_kwargs["image_detail"] = chat_request.image_detail
             if chat_request.image_pixel_limit is not None:
                 provider_kwargs["image_pixel_limit"] = chat_request.image_pixel_limit.model_dump(exclude_none=True)
+            if chat_request.fps is not None:
+                provider_kwargs["fps"] = chat_request.fps
 
             response_content, reasoning_content = await provider_client.chat(
                 model=model_id,

@@ -294,6 +294,28 @@ const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
                   Set max/min pixels for image processing.
                 </p>
               </div>
+
+              <div className="setting-item">
+                <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>
+                  Video FPS ({settings.fps || 'Auto'})
+                </label>
+                <input
+                  type="number"
+                  min="0.1"
+                  max="10"
+                  step="0.1"
+                  placeholder="e.g. 1.0"
+                  value={settings.fps || ''}
+                  onChange={(e) => {
+                    const val = e.target.value === '' ? undefined : parseFloat(e.target.value);
+                    handleChange('fps', val);
+                  }}
+                  style={{ width: '100%', padding: '8px', border: '1px solid #E5E7EB', borderRadius: '4px' }}
+                />
+                <p style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+                  Sampling rate for video understanding (frames per second).
+                </p>
+              </div>
             </div>
 
             <div className="setting-group">

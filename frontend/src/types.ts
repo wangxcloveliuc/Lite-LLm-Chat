@@ -18,6 +18,7 @@ export interface Message {
   role: 'user' | 'assistant' | 'system';
   content: string;
   images?: string[];
+  videos?: string[];
   created_at?: string;
   provider?: string;
   model?: string;
@@ -48,6 +49,7 @@ export interface DeepSeekSettings {
     max_pixels?: number;
     min_pixels?: number;
   };
+  fps?: number;
 }
 
 export interface DoubaoSettings extends DeepSeekSettings {
@@ -66,7 +68,7 @@ export interface SiliconFlowSettings extends DeepSeekSettings {
 export interface ChatRequest {
   provider: string;
   model: string;
-  messages: { role: string; content: string; images?: string[] }[];
+  messages: { role: string; content: string; images?: string[]; videos?: string[] }[];
   stream: boolean;
   temperature?: number;
   max_tokens?: number;
@@ -92,6 +94,7 @@ export interface ChatRequest {
     max_pixels?: number;
     min_pixels?: number;
   };
+  fps?: number;
 }
 
 export interface StreamChunk {

@@ -11,7 +11,7 @@ interface ChatAreaProps {
   messages: Message[];
   isLoading: boolean;
   isChatActive: boolean;
-  onSendMessage: (content: string, imageUrls?: string[]) => void;
+  onSendMessage: (content: string, imageUrls?: string[], videoUrls?: string[]) => void;
   onStopMessage: () => void;
   onEditMessage: (index: number, content: string) => void;
   onRefreshMessage: (index: number) => void;
@@ -129,6 +129,19 @@ function ChatMessage({
             ))}
           </div>
         )}
+        {message.videos && message.videos.length > 0 && (
+          <div className="message-videos">
+            {message.videos.map((url, i) => (
+              <video 
+                key={i} 
+                src={getFullImageUrl(url)} 
+                controls 
+                className="message-video"
+                style={{ maxWidth: '100%', borderRadius: '8px', marginTop: '8px' }}
+              />
+            ))}
+          </div>
+        )}
         <div className="message-content">
           <ReactMarkdown
             remarkPlugins={[remarkGfm, remarkBreaks]}
@@ -235,7 +248,7 @@ export default function ChatArea({
   onRefreshMessage,
 }: ChatAreaProps) {
   const [input, setInput] = useState('');
-  const [pendingImages, setPendingImages] = useState<{ id: string; url?: string; progress: number; file: File; blobUrl: string }[]>([]);
+  const [pendingFiles, setPendingFiles] = useState<{ id: string; url?: string; progress: number; file: File; blobUrl: string; type: 'image' | 'video' }[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -256,10 +269,11 @@ export default function ChatArea({
       id: Math.random().toString(36).substring(7),
       file,
       progress: 0,
-      blobUrl: URL.createObjectURL(file)
+      blobUrl: URL.createObjectURL(file),
+      type: file.type.startsWith('video/') ? 'video' as const : 'image' as const
     }));
 
-    setPendingImages(prev => [...prev, ...newPending]);
+    setPendingFiles(prev => [...prev, ...newPending]);
 
     // Reset file input so same file can be selected again if needed
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -267,21 +281,22 @@ export default function ChatArea({
     // Start uploads
     for (const item of newPending) {
       try {
-        const url = await apiClient.uploadImage(item.file, (progress) => {
-          setPendingImages(prev => prev.map(p => p.id === item.id ? { ...p, progress } : p));
+        const uploadFn = item.type === 'video' ? apiClient.uploadVideo.bind(apiClient) : apiClient.uploadImage.bind(apiClient);
+        const url = await uploadFn(item.file, (progress) => {
+          setPendingFiles(prev => prev.map(p => p.id === item.id ? { ...p, progress } : p));
         });
         if (url) {
-          setPendingImages(prev => prev.map(p => p.id === item.id ? { ...p, url, progress: 100 } : p));
+          setPendingFiles(prev => prev.map(p => p.id === item.id ? { ...p, url, progress: 100 } : p));
         }
       } catch (err) {
         console.error('Upload failed', err);
-        setPendingImages(prev => prev.filter(p => p.id !== item.id));
+        setPendingFiles(prev => prev.filter(p => p.id !== item.id));
       }
     }
   };
 
-  const removePendingImage = (id: string) => {
-    setPendingImages(prev => {
+  const removePendingFile = (id: string) => {
+    setPendingFiles(prev => {
       const item = prev.find(p => p.id === id);
       if (item) URL.revokeObjectURL(item.blobUrl);
       return prev.filter(p => p.id !== id);
@@ -293,13 +308,14 @@ export default function ChatArea({
       onStopMessage();
       return;
     }
-    if (input.trim() || pendingImages.some(img => img.url)) {
-      const imageUrls = pendingImages.filter(img => img.url).map(img => img.url!);
-      onSendMessage(input, imageUrls);
+    if (input.trim() || pendingFiles.some(f => f.url)) {
+      const imageUrls = pendingFiles.filter(f => f.url && f.type === 'image').map(f => f.url!);
+      const videoUrls = pendingFiles.filter(f => f.url && f.type === 'video').map(f => f.url!);
+      onSendMessage(input, imageUrls, videoUrls);
       setInput('');
       // Clean up blob URLs
-      pendingImages.forEach(img => URL.revokeObjectURL(img.blobUrl));
-      setPendingImages([]);
+      pendingFiles.forEach(f => URL.revokeObjectURL(f.blobUrl));
+      setPendingFiles([]);
     }
   };
 
@@ -346,17 +362,21 @@ export default function ChatArea({
       </div>
 
       <div className={`input-container ${isChatActive ? 'chat-active' : ''}`}>
-        {pendingImages.length > 0 && (
+        {pendingFiles.length > 0 && (
           <div className="pending-images-bar">
-            {pendingImages.map((img) => (
-              <div key={img.id} className="pending-image-container">
-                <img src={img.blobUrl} alt="pending" className="pending-image" />
-                {img.progress < 100 && (
+            {pendingFiles.map((file) => (
+              <div key={file.id} className="pending-image-container">
+                {file.type === 'video' ? (
+                  <video src={file.blobUrl} className="pending-image" />
+                ) : (
+                  <img src={file.blobUrl} alt="pending" className="pending-image" />
+                )}
+                {file.progress < 100 && (
                   <div className="upload-progress-overlay">
-                    <div className="progress-ring" style={{ '--progress': `${img.progress}%` } as any}></div>
+                    <div className="progress-ring" style={{ '--progress': `${file.progress}%` } as any}></div>
                   </div>
                 )}
-                <button className="remove-image-btn" onClick={() => removePendingImage(img.id)}>×</button>
+                <button className="remove-image-btn" onClick={() => removePendingFile(file.id)}>×</button>
               </div>
             ))}
           </div>
@@ -368,7 +388,7 @@ export default function ChatArea({
             onChange={handleFileChange}
             style={{ display: 'none' }}
             multiple
-            accept="image/*"
+            accept="image/*,video/*"
           />
           <button className="attachment-btn" onClick={() => fileInputRef.current?.click()}>
             <svg
@@ -394,7 +414,7 @@ export default function ChatArea({
           <button
             className={`send-btn ${isLoading ? 'stop' : ''}`}
             onClick={handleSubmit}
-            disabled={!isLoading && !input.trim() && !pendingImages.some(img => img.url)}
+            disabled={!isLoading && !input.trim() && !pendingFiles.some(f => f.url)}
           >
             {isLoading ? (
               <div className="stop-icon"></div>

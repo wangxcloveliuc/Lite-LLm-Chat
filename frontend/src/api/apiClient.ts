@@ -110,6 +110,14 @@ class APIClient {
   }
 
   async uploadImage(file: File, onProgress?: (percent: number) => void): Promise<string | null> {
+    return this.uploadFile(file, onProgress);
+  }
+
+  async uploadVideo(file: File, onProgress?: (percent: number) => void): Promise<string | null> {
+    return this.uploadFile(file, onProgress);
+  }
+
+  private async uploadFile(file: File, onProgress?: (percent: number) => void): Promise<string | null> {
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
       const formData = new FormData();
@@ -244,7 +252,12 @@ class APIClient {
         body: JSON.stringify({
           provider,
           model,
-          messages: messages.map((m) => ({ role: m.role, content: m.content })),
+          messages: messages.map((m) => ({
+            role: m.role,
+            content: m.content,
+            images: m.images,
+            videos: m.videos,
+          })),
           stream: false,
           session_id: sessionId,
           title,

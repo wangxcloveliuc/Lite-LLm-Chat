@@ -525,6 +525,20 @@ body {
   transform: scale(1.02);
 }
 
+.message-videos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.message-video {
+  max-width: 400px;
+  max-height: 300px;
+  border-radius: 12px;
+  border: 1px solid #E5E7EB;
+}
+
 /* Pending Images Bar */
 .pending-images-bar {
   display: flex;

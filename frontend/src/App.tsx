@@ -28,6 +28,7 @@ function App() {
     system_prompt: '',
     image_detail: 'auto',
     image_pixel_limit: undefined,
+    fps: undefined,
   });
   const [doubaoSettings, setDoubaoSettings] = useState<DoubaoSettings>({
     frequency_penalty: 0,
@@ -39,6 +40,7 @@ function App() {
     system_prompt: '',
     image_detail: 'auto',
     image_pixel_limit: undefined,
+    fps: undefined,
     thinking: undefined,
     reasoning_effort: 'medium',
     max_completion_tokens: undefined,
@@ -53,6 +55,7 @@ function App() {
     system_prompt: '',
     image_detail: 'auto',
     image_pixel_limit: undefined,
+    fps: undefined,
     enable_thinking: undefined,
     thinking_budget: undefined,
     min_p: undefined,
@@ -138,13 +141,14 @@ function App() {
     }
   };
 
-  const handleSendMessage = async (content: string, imageUrls?: string[]) => {
+  const handleSendMessage = async (content: string, imageUrls?: string[], videoUrls?: string[]) => {
     if (!selectedProvider || !selectedModel) return;
 
     const userMessage: Message = {
       role: 'user',
       content,
       images: imageUrls,
+      videos: videoUrls,
     };
 
     const assistantMessage: Message = {
@@ -165,23 +169,23 @@ function App() {
     if (selectedProvider === 'doubao') {
       currentSettings = {
         ...doubaoSettings,
-        stop: doubaoSettings.stop ? doubaoSettings.stop.split(',').map(s => s.trim()) : undefined,
+        stop: doubaoSettings.stop ? doubaoSettings.stop.split(',').map((s: string) => s.trim()) : undefined,
       };
     } else if (selectedProvider === 'deepseek') {
       currentSettings = {
         ...deepseekSettings,
-        stop: deepseekSettings.stop ? deepseekSettings.stop.split(',').map(s => s.trim()) : undefined,
+        stop: deepseekSettings.stop ? deepseekSettings.stop.split(',').map((s: string) => s.trim()) : undefined,
       };
     } else if (selectedProvider === 'siliconflow') {
       currentSettings = {
         ...siliconflowSettings,
-        stop: siliconflowSettings.stop ? siliconflowSettings.stop.split(',').map(s => s.trim()) : undefined,
+        stop: siliconflowSettings.stop ? siliconflowSettings.stop.split(',').map((s: string) => s.trim()) : undefined,
       };
     } else {
       // Fallback to deepseek settings as default for other providers (common basic settings)
       currentSettings = {
         ...deepseekSettings,
-        stop: deepseekSettings.stop ? deepseekSettings.stop.split(',').map(s => s.trim()) : undefined,
+        stop: deepseekSettings.stop ? deepseekSettings.stop.split(',').map((s: string) => s.trim()) : undefined,
       };
     }
 
@@ -189,7 +193,7 @@ function App() {
       const request = {
         provider: selectedProvider,
         model: selectedModel,
-        messages: [{ role: 'user', content, images: imageUrls }],
+        messages: [{ role: 'user', content, images: imageUrls, videos: videoUrls }],
         stream: true,
         session_id: currentSessionId || undefined,
         title: currentSessionId ? undefined : content.substring(0, 50),
@@ -203,6 +207,7 @@ function App() {
         system_prompt: currentSettings.system_prompt || undefined,
         image_detail: currentSettings.image_detail,
         image_pixel_limit: currentSettings.image_pixel_limit,
+        fps: currentSettings.fps,
         // Doubao-specific settings
         thinking: currentSettings.thinking,
         reasoning_effort: currentSettings.reasoning_effort,

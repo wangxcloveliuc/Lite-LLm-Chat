@@ -41,6 +41,7 @@ class ChatMessage(Base):
     role = Column(String(20), nullable=False)  # 'user', 'assistant', 'system'
     content = Column(Text, nullable=False)
     images = Column(JSON, nullable=True)  # List of image URLs/paths
+    videos = Column(JSON, nullable=True)  # List of video URLs/paths
     thought_process = Column(Text, nullable=True)  # For reasoning/thinking content from inference models
     provider = Column(String(50), nullable=True)
     model = Column(String(100), nullable=True)

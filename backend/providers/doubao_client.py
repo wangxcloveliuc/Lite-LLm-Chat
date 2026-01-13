@@ -40,8 +40,9 @@ class DoubaoClient(BaseClient):
         messages: List[Dict],
         image_detail: Optional[str] = None,
         image_pixel_limit: Optional[Dict] = None,
+        fps: Optional[float] = None,
     ) -> List[Dict]:
-        """Convert local image URLs to data URIs for Ark vision support."""
+        """Convert local image/video URLs to data URIs for Ark multi-modal support."""
         new_messages = []
         for msg in messages:
             role = msg.get("role")
@@ -50,6 +51,7 @@ class DoubaoClient(BaseClient):
             if isinstance(content, list):
                 new_parts = []
                 for part in content:
+                    # Handle image_url
                     if part.get("type") == "image_url" and "image_url" in part:
                         url = part["image_url"].get("url", "")
                         if url and url.startswith("/uploads/"):
@@ -73,10 +75,34 @@ class DoubaoClient(BaseClient):
                                             new_part["image_url"]["image_pixel_limit"] = image_pixel_limit
                                         new_parts.append(new_part)
                                         continue
-                                else:
-                                    print(f"[DoubaoArk] Image not found: {local_path}")
                             except Exception as e:
                                 print(f"[DoubaoArk] Error processing image {url}: {e}")
+                    
+                    # Handle video_url
+                    elif part.get("type") == "video_url" and "video_url" in part:
+                        url = part["video_url"].get("url", "")
+                        if url and url.startswith("/uploads/"):
+                            try:
+                                current_dir = os.path.dirname(os.path.abspath(__file__))
+                                backend_dir = os.path.dirname(current_dir)
+                                relative_path = url.lstrip("/")
+                                local_path = os.path.join(backend_dir, relative_path)
+
+                                if os.path.exists(local_path):
+                                    mime_type, _ = mimetypes.guess_type(local_path)
+                                    if not mime_type:
+                                        mime_type = "video/mp4"
+                                    with open(local_path, "rb") as video_file:
+                                        base64_video = base64.b64encode(video_file.read()).decode("utf-8")
+                                        new_part = part.copy()
+                                        new_part["video_url"] = {"url": f"data:{mime_type};base64,{base64_video}"}
+                                        if fps is not None:
+                                            new_part["video_url"]["fps"] = fps
+                                        new_parts.append(new_part)
+                                        continue
+                            except Exception as e:
+                                print(f"[DoubaoArk] Error processing video {url}: {e}")
+
                     new_parts.append(part)
                 new_messages.append({"role": role, "content": new_parts})
             else:
@@ -98,6 +124,7 @@ class DoubaoClient(BaseClient):
             max_completion_tokens = kwargs.pop("max_completion_tokens", None)
             image_detail = kwargs.pop("image_detail", None)
             image_pixel_limit = kwargs.pop("image_pixel_limit", None)
+            fps = kwargs.pop("fps", None)
 
             if thinking is True:
                 extra_body["thinking"] = {"type": "enabled"}
@@ -111,7 +138,10 @@ class DoubaoClient(BaseClient):
                 kwargs["max_completion_tokens"] = max_completion_tokens
 
             processed_messages = self._process_messages(
-                messages, image_detail=image_detail, image_pixel_limit=image_pixel_limit
+                messages, 
+                image_detail=image_detail, 
+                image_pixel_limit=image_pixel_limit,
+                fps=fps
             )
 
             response = self.client.chat.completions.create(
@@ -146,6 +176,7 @@ class DoubaoClient(BaseClient):
             max_completion_tokens = kwargs.pop("max_completion_tokens", None)
             image_detail = kwargs.pop("image_detail", None)
             image_pixel_limit = kwargs.pop("image_pixel_limit", None)
+            fps = kwargs.pop("fps", None)
 
             if thinking is True:
                 extra_body["thinking"] = {"type": "enabled"}
@@ -159,7 +190,10 @@ class DoubaoClient(BaseClient):
                 kwargs["max_completion_tokens"] = max_completion_tokens
 
             processed_messages = self._process_messages(
-                messages, image_detail=image_detail, image_pixel_limit=image_pixel_limit
+                messages, 
+                image_detail=image_detail, 
+                image_pixel_limit=image_pixel_limit,
+                fps=fps
             )
 
             response = self.client.chat.completions.create(
