@@ -26,6 +26,8 @@ function App() {
     top_p: 1,
     stop: '',
     system_prompt: '',
+    image_detail: 'auto',
+    image_pixel_limit: undefined,
   });
   const [doubaoSettings, setDoubaoSettings] = useState<DoubaoSettings>({
     frequency_penalty: 0,
@@ -35,6 +37,8 @@ function App() {
     top_p: 1,
     stop: '',
     system_prompt: '',
+    image_detail: 'auto',
+    image_pixel_limit: undefined,
     thinking: undefined,
     reasoning_effort: 'medium',
     max_completion_tokens: undefined,
@@ -47,6 +51,8 @@ function App() {
     top_p: 1,
     stop: '',
     system_prompt: '',
+    image_detail: 'auto',
+    image_pixel_limit: undefined,
     enable_thinking: undefined,
     thinking_budget: undefined,
     min_p: undefined,
@@ -195,6 +201,8 @@ function App() {
         top_p: currentSettings.top_p,
         stop: currentSettings.stop,
         system_prompt: currentSettings.system_prompt || undefined,
+        image_detail: currentSettings.image_detail,
+        image_pixel_limit: currentSettings.image_pixel_limit,
         // Doubao-specific settings
         thinking: currentSettings.thinking,
         reasoning_effort: currentSettings.reasoning_effort,

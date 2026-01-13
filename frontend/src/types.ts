@@ -43,6 +43,11 @@ export interface DeepSeekSettings {
   top_p: number;
   stop: string;
   system_prompt: string;
+  image_detail?: 'auto' | 'low' | 'high';
+  image_pixel_limit?: {
+    max_pixels?: number;
+    min_pixels?: number;
+  };
 }
 
 export interface DoubaoSettings extends DeepSeekSettings {
@@ -82,6 +87,11 @@ export interface ChatRequest {
   thinking_budget?: number;
   min_p?: number;
   top_k?: number;
+  image_detail?: string;
+  image_pixel_limit?: {
+    max_pixels?: number;
+    min_pixels?: number;
+  };
 }
 
 export interface StreamChunk {

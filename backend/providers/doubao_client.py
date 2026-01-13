@@ -35,7 +35,12 @@ class DoubaoClient(BaseClient):
                     return val
         return ""
 
-    def _process_messages(self, messages: List[Dict]) -> List[Dict]:
+    def _process_messages(
+        self,
+        messages: List[Dict],
+        image_detail: Optional[str] = None,
+        image_pixel_limit: Optional[Dict] = None,
+    ) -> List[Dict]:
         """Convert local image URLs to data URIs for Ark vision support."""
         new_messages = []
         for msg in messages:
@@ -62,6 +67,10 @@ class DoubaoClient(BaseClient):
                                         base64_image = base64.b64encode(image_file.read()).decode("utf-8")
                                         new_part = part.copy()
                                         new_part["image_url"] = {"url": f"data:{mime_type};base64,{base64_image}"}
+                                        if image_detail:
+                                            new_part["image_url"]["detail"] = image_detail
+                                        if image_pixel_limit:
+                                            new_part["image_url"]["image_pixel_limit"] = image_pixel_limit
                                         new_parts.append(new_part)
                                         continue
                                 else:
@@ -87,6 +96,8 @@ class DoubaoClient(BaseClient):
             thinking = kwargs.pop("thinking", None)
             reasoning_effort = kwargs.pop("reasoning_effort", None)
             max_completion_tokens = kwargs.pop("max_completion_tokens", None)
+            image_detail = kwargs.pop("image_detail", None)
+            image_pixel_limit = kwargs.pop("image_pixel_limit", None)
 
             if thinking is True:
                 extra_body["thinking"] = {"type": "enabled"}
@@ -99,7 +110,9 @@ class DoubaoClient(BaseClient):
             if max_completion_tokens is not None:
                 kwargs["max_completion_tokens"] = max_completion_tokens
 
-            processed_messages = self._process_messages(messages)
+            processed_messages = self._process_messages(
+                messages, image_detail=image_detail, image_pixel_limit=image_pixel_limit
+            )
 
             response = self.client.chat.completions.create(
                 model=model,
@@ -131,6 +144,8 @@ class DoubaoClient(BaseClient):
             thinking = kwargs.pop("thinking", None)
             reasoning_effort = kwargs.pop("reasoning_effort", None)
             max_completion_tokens = kwargs.pop("max_completion_tokens", None)
+            image_detail = kwargs.pop("image_detail", None)
+            image_pixel_limit = kwargs.pop("image_pixel_limit", None)
 
             if thinking is True:
                 extra_body["thinking"] = {"type": "enabled"}
@@ -143,7 +158,9 @@ class DoubaoClient(BaseClient):
             if max_completion_tokens is not None:
                 kwargs["max_completion_tokens"] = max_completion_tokens
 
-            processed_messages = self._process_messages(messages)
+            processed_messages = self._process_messages(
+                messages, image_detail=image_detail, image_pixel_limit=image_pixel_limit
+            )
 
             response = self.client.chat.completions.create(
                 model=model,

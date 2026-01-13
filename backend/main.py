@@ -509,6 +509,10 @@ async def chat_completion(
                     provider_kwargs["min_p"] = chat_request.min_p
                 if chat_request.top_k is not None:
                     provider_kwargs["top_k"] = chat_request.top_k
+                if chat_request.image_detail is not None:
+                    provider_kwargs["image_detail"] = chat_request.image_detail
+                if chat_request.image_pixel_limit is not None:
+                    provider_kwargs["image_pixel_limit"] = chat_request.image_pixel_limit.model_dump(exclude_none=True)
 
                 stream = provider_client.stream_chat(
                     model=model_id,
@@ -636,6 +640,10 @@ async def chat_completion(
                 provider_kwargs["min_p"] = chat_request.min_p
             if chat_request.top_k is not None:
                 provider_kwargs["top_k"] = chat_request.top_k
+            if chat_request.image_detail is not None:
+                provider_kwargs["image_detail"] = chat_request.image_detail
+            if chat_request.image_pixel_limit is not None:
+                provider_kwargs["image_pixel_limit"] = chat_request.image_pixel_limit.model_dump(exclude_none=True)
 
             response_content, reasoning_content = await provider_client.chat(
                 model=model_id,

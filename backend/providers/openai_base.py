@@ -51,7 +51,12 @@ class OpenAICompatibleClient(BaseClient):
         
         return ""
 
-    def _process_messages(self, messages: List[Dict]) -> List[Dict]:
+    def _process_messages(
+        self,
+        messages: List[Dict],
+        image_detail: Optional[str] = None,
+        image_pixel_limit: Optional[Dict] = None,
+    ) -> List[Dict]:
         """Process messages to convert local image URLs to data URIs."""
         new_messages = []
         for msg in messages:
@@ -85,6 +90,10 @@ class OpenAICompatibleClient(BaseClient):
                                         # Update the part with data URI
                                         new_part = part.copy()
                                         new_part["image_url"] = {"url": f"data:{mime_type};base64,{base64_image}"}
+                                        if image_detail:
+                                            new_part["image_url"]["detail"] = image_detail
+                                        if image_pixel_limit:
+                                            new_part["image_url"]["image_pixel_limit"] = image_pixel_limit
                                         new_parts.append(new_part)
                                         continue
                                 else:
@@ -109,10 +118,14 @@ class OpenAICompatibleClient(BaseClient):
         try:
             # Clean up kwargs
             sanitized_kwargs = kwargs.copy()
+            image_detail = sanitized_kwargs.pop("image_detail", None)
+            image_pixel_limit = sanitized_kwargs.pop("image_pixel_limit", None)
             for key in ["thinking", "reasoning_effort"]:
                 sanitized_kwargs.pop(key, None)
 
-            processed_messages = self._process_messages(messages)
+            processed_messages = self._process_messages(
+                messages, image_detail=image_detail, image_pixel_limit=image_pixel_limit
+            )
 
             response = self.client.chat.completions.create(
                 model=model,
@@ -143,10 +156,14 @@ class OpenAICompatibleClient(BaseClient):
         try:
             # Clean up kwargs to remove custom parameters not supported by the base OpenAI SDK
             sanitized_kwargs = kwargs.copy()
+            image_detail = sanitized_kwargs.pop("image_detail", None)
+            image_pixel_limit = sanitized_kwargs.pop("image_pixel_limit", None)
             for key in ["thinking", "reasoning_effort"]:
                 sanitized_kwargs.pop(key, None)
 
-            processed_messages = self._process_messages(messages)
+            processed_messages = self._process_messages(
+                messages, image_detail=image_detail, image_pixel_limit=image_pixel_limit
+            )
 
             response = self.client.chat.completions.create(
                 model=model,

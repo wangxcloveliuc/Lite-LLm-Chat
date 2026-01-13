@@ -8,6 +8,13 @@ from datetime import datetime
 
 
 # Provider and Model schemas
+class ImagePixelLimit(BaseModel):
+    """Image pixel limit settings"""
+
+    max_pixels: Optional[int] = Field(default=None, ge=1)
+    min_pixels: Optional[int] = Field(default=None, ge=1)
+
+
 class Provider(BaseModel):
     """Provider information"""
 
@@ -107,6 +114,9 @@ class ChatRequest(BaseModel):
     stop: Optional[List[str]] = None
     title: Optional[str] = None
     system_prompt: Optional[str] = None
+    # Vision settings
+    image_detail: Optional[str] = Field(default=None, pattern="^(auto|low|high)$")
+    image_pixel_limit: Optional[ImagePixelLimit] = None
     # Extended settings for specific providers (e.g., Doubao, DeepSeek)
     thinking: Optional[bool] = None
     reasoning_effort: Optional[str] = None
