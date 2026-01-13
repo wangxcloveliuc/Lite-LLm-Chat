@@ -29,6 +29,8 @@ function App() {
     image_detail: 'auto',
     image_pixel_limit: undefined,
     fps: undefined,
+    video_detail: 'auto',
+    max_frames: undefined,
   });
   const [doubaoSettings, setDoubaoSettings] = useState<DoubaoSettings>({
     frequency_penalty: 0,
@@ -41,6 +43,8 @@ function App() {
     image_detail: 'auto',
     image_pixel_limit: undefined,
     fps: undefined,
+    video_detail: 'auto',
+    max_frames: undefined,
     thinking: undefined,
     reasoning_effort: 'medium',
     max_completion_tokens: undefined,
@@ -56,6 +60,8 @@ function App() {
     image_detail: 'auto',
     image_pixel_limit: undefined,
     fps: undefined,
+    video_detail: 'auto',
+    max_frames: undefined,
     enable_thinking: undefined,
     thinking_budget: undefined,
     min_p: undefined,
@@ -141,7 +147,7 @@ function App() {
     }
   };
 
-  const handleSendMessage = async (content: string, imageUrls?: string[], videoUrls?: string[]) => {
+  const handleSendMessage = async (content: string, imageUrls?: string[], videoUrls?: string[], audioUrls?: string[]) => {
     if (!selectedProvider || !selectedModel) return;
 
     const userMessage: Message = {
@@ -149,6 +155,7 @@ function App() {
       content,
       images: imageUrls,
       videos: videoUrls,
+      audios: audioUrls,
     };
 
     const assistantMessage: Message = {
@@ -193,7 +200,7 @@ function App() {
       const request = {
         provider: selectedProvider,
         model: selectedModel,
-        messages: [{ role: 'user', content, images: imageUrls, videos: videoUrls }],
+        messages: [{ role: 'user', content, images: imageUrls, videos: videoUrls, audios: audioUrls }],
         stream: true,
         session_id: currentSessionId || undefined,
         title: currentSessionId ? undefined : content.substring(0, 50),
@@ -208,6 +215,8 @@ function App() {
         image_detail: currentSettings.image_detail,
         image_pixel_limit: currentSettings.image_pixel_limit,
         fps: currentSettings.fps,
+        video_detail: currentSettings.video_detail,
+        max_frames: currentSettings.max_frames,
         // Doubao-specific settings
         thinking: currentSettings.thinking,
         reasoning_effort: currentSettings.reasoning_effort,

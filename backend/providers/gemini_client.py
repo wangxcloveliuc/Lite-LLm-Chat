@@ -128,6 +128,30 @@ class GeminiClient(BaseClient):
                                     print(f"[GeminiClient] Video not found: {local_path}")
                             except Exception as e:
                                 print(f"[GeminiClient] Error reading video {url}: {e}")
+                    elif part.get("type") == "audio_url":
+                        url = part.get("audio_url", {}).get("url")
+                        if url and url.startswith("/uploads/"):
+                            try:
+                                current_dir = os.path.dirname(os.path.abspath(__file__))
+                                backend_dir = os.path.dirname(current_dir)
+                                relative_path = url.lstrip("/")
+                                local_path = os.path.join(backend_dir, relative_path)
+                                
+                                if os.path.exists(local_path):
+                                    mime_type, _ = mimetypes.guess_type(local_path)
+                                    if not mime_type:
+                                        mime_type = "audio/mpeg"
+                                    with open(local_path, "rb") as audio_file:
+                                        parts.append({
+                                            "inline_data": {
+                                                "mime_type": mime_type,
+                                                "data": base64.b64encode(audio_file.read()).decode('utf-8')
+                                            }
+                                        })
+                                else:
+                                    print(f"[GeminiClient] Audio not found: {local_path}")
+                            except Exception as e:
+                                print(f"[GeminiClient] Error reading audio {url}: {e}")
                         elif url and url.startswith("http"):
                              # Gemini google-genai SDK might not support remote URLs in inline_data easily
                              # For now, we skip or could fetch + base64 if needed.

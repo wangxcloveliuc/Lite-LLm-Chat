@@ -566,6 +566,23 @@ body {
   border: 1px solid #E5E7EB;
 }
 
+.pending-image.audio-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #F3F4F6;
+  color: #6B7280;
+}
+
+.message-audios {
+  width: 100%;
+  max-width: 400px;
+}
+
+.message-audio {
+  height: 40px;
+}
+
 .remove-image-btn {
   position: absolute;
   top: -8px;

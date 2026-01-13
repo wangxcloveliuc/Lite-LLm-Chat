@@ -117,6 +117,10 @@ class APIClient {
     return this.uploadFile(file, onProgress);
   }
 
+  async uploadAudio(file: File, onProgress?: (percent: number) => void): Promise<string | null> {
+    return this.uploadFile(file, onProgress);
+  }
+
   private async uploadFile(file: File, onProgress?: (percent: number) => void): Promise<string | null> {
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
@@ -257,6 +261,7 @@ class APIClient {
             content: m.content,
             images: m.images,
             videos: m.videos,
+            audios: m.audios,
           })),
           stream: false,
           session_id: sessionId,

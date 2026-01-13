@@ -42,6 +42,7 @@ class MessageCreate(BaseModel):
     content: str
     images: Optional[List[str]] = None
     videos: Optional[List[str]] = None
+    audios: Optional[List[str]] = None
 
 
 class MessageResponse(BaseModel):
@@ -52,6 +53,7 @@ class MessageResponse(BaseModel):
     content: str
     images: Optional[List[str]] = None
     videos: Optional[List[str]] = None
+    audios: Optional[List[str]] = None
     provider: Optional[str] = None
     model: Optional[str] = None
     thought_process: Optional[str] = None
@@ -120,6 +122,8 @@ class ChatRequest(BaseModel):
     image_detail: Optional[str] = Field(default=None, pattern="^(auto|low|high)$")
     image_pixel_limit: Optional[ImagePixelLimit] = None
     fps: Optional[float] = Field(default=None, ge=0.1, le=10.0)
+    video_detail: Optional[str] = Field(default=None, pattern="^(auto|low|high)$")
+    max_frames: Optional[int] = Field(default=None, ge=1)
     # Extended settings for specific providers (e.g., Doubao, DeepSeek)
     thinking: Optional[bool] = None
     reasoning_effort: Optional[str] = None

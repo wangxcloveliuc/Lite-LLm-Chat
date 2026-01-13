@@ -57,8 +57,10 @@ class OpenAICompatibleClient(BaseClient):
         image_detail: Optional[str] = None,
         image_pixel_limit: Optional[Dict] = None,
         fps: Optional[float] = None,
+        video_detail: Optional[str] = None,
+        max_frames: Optional[int] = None,
     ) -> List[Dict]:
-        """Process messages to convert local image URLs to data URIs."""
+        """Process messages to convert local image/video/audio URLs to data URIs."""
         new_messages = []
         for msg in messages:
             role = msg.get("role")
@@ -122,12 +124,41 @@ class OpenAICompatibleClient(BaseClient):
                                         new_part["video_url"] = {"url": f"data:{mime_type};base64,{base64_video}"}
                                         if fps is not None:
                                             new_part["video_url"]["fps"] = fps
+                                        if video_detail:
+                                            new_part["video_url"]["detail"] = video_detail
+                                        if max_frames:
+                                            new_part["video_url"]["max_frames"] = max_frames
                                         new_parts.append(new_part)
                                         continue
                                 else:
                                     print(f"[OpenAIClient] Video not found: {local_path}")
                             except Exception as e:
                                 print(f"[OpenAIClient] Error processing video {url}: {e}")
+
+                    # Handle audio_url for generic OpenAI-compatible providers
+                    elif part.get("type") == "audio_url" and "audio_url" in part:
+                        url = part["audio_url"].get("url", "")
+                        if url and url.startswith("/uploads/"):
+                            try:
+                                current_dir = os.path.dirname(os.path.abspath(__file__))
+                                backend_dir = os.path.dirname(current_dir)
+                                relative_path = url.lstrip("/")
+                                local_path = os.path.join(backend_dir, relative_path)
+
+                                if os.path.exists(local_path):
+                                    mime_type, _ = mimetypes.guess_type(local_path)
+                                    if not mime_type:
+                                        mime_type = "audio/mpeg"
+                                    with open(local_path, "rb") as audio_file:
+                                        base64_audio = base64.b64encode(audio_file.read()).decode("utf-8")
+                                        new_part = part.copy()
+                                        new_part["audio_url"] = {"url": f"data:{mime_type};base64,{base64_audio}"}
+                                        new_parts.append(new_part)
+                                        continue
+                                else:
+                                    print(f"[OpenAIClient] Audio not found: {local_path}")
+                            except Exception as e:
+                                print(f"[OpenAIClient] Error processing audio {url}: {e}")
 
                     new_parts.append(part)
                 new_messages.append({"role": role, "content": new_parts})
@@ -150,6 +181,8 @@ class OpenAICompatibleClient(BaseClient):
             image_detail = sanitized_kwargs.pop("image_detail", None)
             image_pixel_limit = sanitized_kwargs.pop("image_pixel_limit", None)
             fps = sanitized_kwargs.pop("fps", None)
+            video_detail = sanitized_kwargs.pop("video_detail", None)
+            max_frames = sanitized_kwargs.pop("max_frames", None)
             for key in ["thinking", "reasoning_effort"]:
                 sanitized_kwargs.pop(key, None)
 
@@ -157,7 +190,9 @@ class OpenAICompatibleClient(BaseClient):
                 messages, 
                 image_detail=image_detail, 
                 image_pixel_limit=image_pixel_limit,
-                fps=fps
+                fps=fps,
+                video_detail=video_detail,
+                max_frames=max_frames
             )
 
             response = self.client.chat.completions.create(
@@ -192,6 +227,8 @@ class OpenAICompatibleClient(BaseClient):
             image_detail = sanitized_kwargs.pop("image_detail", None)
             image_pixel_limit = sanitized_kwargs.pop("image_pixel_limit", None)
             fps = sanitized_kwargs.pop("fps", None)
+            video_detail = sanitized_kwargs.pop("video_detail", None)
+            max_frames = sanitized_kwargs.pop("max_frames", None)
             for key in ["thinking", "reasoning_effort"]:
                 sanitized_kwargs.pop(key, None)
 
@@ -199,7 +236,9 @@ class OpenAICompatibleClient(BaseClient):
                 messages, 
                 image_detail=image_detail, 
                 image_pixel_limit=image_pixel_limit,
-                fps=fps
+                fps=fps,
+                video_detail=video_detail,
+                max_frames=max_frames
             )
 
             response = self.client.chat.completions.create(

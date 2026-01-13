@@ -415,18 +415,24 @@ async def chat_completion(
         return data
 
     # Prepare incoming messages (only user/system).
-    # Each tuple is (role, content, images, videos)
+    # Each tuple is (role, content, images, videos, audios)
     incoming_data = [
-        (msg.role, msg.content, ensure_list(msg.images), ensure_list(msg.videos))
+        (msg.role, msg.content, ensure_list(msg.images), ensure_list(msg.videos), ensure_list(msg.audios))
         for msg in chat_request.messages
         if msg.role in ("user", "system")
     ]
 
     # Helper to format content for API (multi-modal support)
-    def format_api_content(content: str, images: Optional[List[str]], videos: Optional[List[str]] = None):
+    def format_api_content(
+        content: str, 
+        images: Optional[List[str]], 
+        videos: Optional[List[str]] = None,
+        audios: Optional[List[str]] = None
+    ):
         images = ensure_list(images)
         videos = ensure_list(videos)
-        if not images and not videos:
+        audios = ensure_list(audios)
+        if not images and not videos and not audios:
             return content
         
         parts = [{"type": "text", "text": content}]
@@ -444,15 +450,22 @@ async def chat_completion(
                     "video_url": {"url": video_url}
                 }
                 parts.append(video_part)
+        if audios:
+            for audio_url in audios:
+                audio_part = {
+                    "type": "audio_url",
+                    "audio_url": {"url": audio_url}
+                }
+                parts.append(audio_part)
         return parts
 
     # Build API messages from full context (existing + deduped incoming) but DO NOT persist incoming messages yet
     api_messages = [
-        {"role": m.role, "content": format_api_content(m.content, m.images, getattr(m, 'videos', None))} 
+        {"role": m.role, "content": format_api_content(m.content, m.images, getattr(m, 'videos', None), getattr(m, 'audios', None))} 
         for m in existing_messages
     ] + [
-        {"role": r, "content": format_api_content(c, i, v)} 
-        for r, c, i, v in incoming_data
+        {"role": r, "content": format_api_content(c, i, v, a)} 
+        for r, c, i, v, a in incoming_data
     ]
 
     # Add system prompt at the beginning if provided
@@ -469,10 +482,11 @@ async def chat_completion(
             content=c,
             images=i, # Pass list directly, SQLAlchemy JSON type handles it
             videos=v,
+            audios=a,
             provider=provider_id,
             model=model_id,
         )
-        for r, c, i, v in incoming_data
+        for r, c, i, v, a in incoming_data
     ]
 
     # Persist incoming messages immediately so they aren't lost if the model call fails
@@ -526,6 +540,10 @@ async def chat_completion(
                     provider_kwargs["image_pixel_limit"] = chat_request.image_pixel_limit.model_dump(exclude_none=True)
                 if chat_request.fps is not None:
                     provider_kwargs["fps"] = chat_request.fps
+                if chat_request.video_detail is not None:
+                    provider_kwargs["video_detail"] = chat_request.video_detail
+                if chat_request.max_frames is not None:
+                    provider_kwargs["max_frames"] = chat_request.max_frames
 
                 stream = provider_client.stream_chat(
                     model=model_id,
@@ -659,6 +677,10 @@ async def chat_completion(
                 provider_kwargs["image_pixel_limit"] = chat_request.image_pixel_limit.model_dump(exclude_none=True)
             if chat_request.fps is not None:
                 provider_kwargs["fps"] = chat_request.fps
+            if chat_request.video_detail is not None:
+                provider_kwargs["video_detail"] = chat_request.video_detail
+            if chat_request.max_frames is not None:
+                provider_kwargs["max_frames"] = chat_request.max_frames
 
             response_content, reasoning_content = await provider_client.chat(
                 model=model_id,

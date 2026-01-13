@@ -316,6 +316,44 @@ const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
                   Sampling rate for video understanding (frames per second).
                 </p>
               </div>
+
+              <div className="setting-group">
+                <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>
+                  Video Detail ({settings.video_detail || 'auto'})
+                </label>
+                <select
+                  value={settings.video_detail || 'auto'}
+                  onChange={(e) => handleChange('video_detail', e.target.value)}
+                  style={{ width: '100%', padding: '8px', border: '1px solid #E5E7EB', borderRadius: '4px', fontSize: '14px' }}
+                >
+                  <option value="auto">Auto</option>
+                  <option value="low">Low</option>
+                  <option value="high">High</option>
+                </select>
+                <p style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+                  Fidelity level for video processing.
+                </p>
+              </div>
+
+              <div className="setting-group">
+                <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>
+                  Max Frames
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  placeholder="e.g. 10"
+                  value={settings.max_frames || ''}
+                  onChange={(e) => {
+                    const val = e.target.value === '' ? undefined : parseInt(e.target.value);
+                    handleChange('max_frames', val);
+                  }}
+                  style={{ width: '100%', padding: '8px', border: '1px solid #E5E7EB', borderRadius: '4px' }}
+                />
+                <p style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+                  Specify how many frames to extract from video.
+                </p>
+              </div>
             </div>
 
             <div className="setting-group">
