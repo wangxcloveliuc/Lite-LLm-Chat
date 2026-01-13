@@ -78,6 +78,13 @@ export interface CerebrasSettings {
   disable_reasoning?: boolean;
 }
 
+export interface GroqSettings extends DeepSeekSettings {
+  reasoning_format?: 'parsed' | 'raw' | 'hidden';
+  include_reasoning?: boolean;
+  reasoning_effort?: 'none' | 'default' | 'low' | 'medium' | 'high';
+  max_completion_tokens?: number;
+}
+
 export interface ChatRequest {
   provider: string;
   model: string;
@@ -98,6 +105,8 @@ export interface ChatRequest {
   thinking?: boolean;
   reasoning_effort?: string;
   disable_reasoning?: boolean;
+  reasoning_format?: string;
+  include_reasoning?: boolean;
   max_completion_tokens?: number;
   enable_thinking?: boolean;
   thinking_budget?: number;

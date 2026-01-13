@@ -128,6 +128,8 @@ class ChatRequest(BaseModel):
     thinking: Optional[bool] = None
     reasoning_effort: Optional[str] = None
     disable_reasoning: Optional[bool] = None
+    reasoning_format: Optional[str] = None
+    include_reasoning: Optional[bool] = None
     max_completion_tokens: Optional[int] = Field(default=None, ge=1)
     # SiliconFlow specific
     enable_thinking: Optional[bool] = None

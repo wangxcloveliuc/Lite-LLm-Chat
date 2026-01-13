@@ -1,12 +1,12 @@
 import React, { useEffect, useRef } from 'react';
-import type { DeepSeekSettings, DoubaoSettings, SiliconFlowSettings, CerebrasSettings } from '../types';
+import type { DeepSeekSettings, DoubaoSettings, SiliconFlowSettings, CerebrasSettings, GroqSettings } from '../types';
 
 interface SettingsSidebarProps {
   isOpen: boolean;
   onClose: () => void;
   provider: string;
   modelId: string;
-  settings: DeepSeekSettings | DoubaoSettings | SiliconFlowSettings | CerebrasSettings;
+  settings: DeepSeekSettings | DoubaoSettings | SiliconFlowSettings | CerebrasSettings | GroqSettings;
   onSettingsChange: (settings: any) => void;
 }
 
@@ -50,6 +50,7 @@ const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
   const isDoubao = provider === 'doubao';
   const isSiliconFlow = provider === 'siliconflow';
   const isCerebras = provider === 'cerebras';
+  const isGroq = provider === 'groq';
 
   const handleChange = (field: string, value: any) => {
     onSettingsChange({
@@ -62,6 +63,7 @@ const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
   const siliconflowSettings = settings as SiliconFlowSettings;
   const cerebrasSettings = settings as CerebrasSettings;
   const deepseekSettings = settings as DeepSeekSettings;
+  const groqSettings = settings as GroqSettings;
 
   return (
     <div className="settings-sidebar" ref={sidebarRef}>
@@ -87,7 +89,7 @@ const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
       </div>
 
       <div className="settings-content" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-        {isDeepSeek || isDoubao || isSiliconFlow || isCerebras ? (
+        {isDeepSeek || isDoubao || isSiliconFlow || isCerebras || isGroq ? (
           <>
             {isDoubao && (
               <>
@@ -285,7 +287,96 @@ const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
               </>
             )}
 
-            {!isCerebras && !isDeepSeek && (
+            {isGroq && (
+              <>
+                <div className="setting-group">
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>
+                    Reasoning Effort
+                  </label>
+                  <select
+                    value={groqSettings.reasoning_effort || 'default'}
+                    onChange={(e) => handleChange('reasoning_effort', e.target.value)}
+                    style={{ width: '100%', padding: '8px', border: '1px solid #E5E7EB', borderRadius: '4px', fontSize: '14px' }}
+                  >
+                    {modelId.toLowerCase().includes('qwen') ? (
+                      <>
+                        <option value="none">None (Disable Reasoning)</option>
+                        <option value="default">Default</option>
+                      </>
+                    ) : (
+                      <>
+                        <option value="low">Low</option>
+                        <option value="medium">Medium</option>
+                        <option value="high">High</option>
+                      </>
+                    )}
+                  </select>
+                </div>
+
+                {!modelId.toLowerCase().includes('gpt-oss') && (
+                  <div className="setting-group">
+                    <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>
+                      Reasoning Format
+                    </label>
+                    <select
+                      value={groqSettings.reasoning_format || 'parsed'}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        handleChange('reasoning_format', val);
+                        if (val !== '') {
+                          handleChange('include_reasoning', undefined);
+                        }
+                      }}
+                      style={{ width: '100%', padding: '8px', border: '1px solid #E5E7EB', borderRadius: '4px', fontSize: '14px' }}
+                    >
+                      <option value="parsed">Parsed (Dedicated field)</option>
+                      <option value="raw">Raw (In text with &lt;think&gt;)</option>
+                      <option value="hidden">Hidden</option>
+                    </select>
+                  </div>
+                )}
+
+                {modelId.toLowerCase().includes('gpt-oss') && (
+                  <div className="setting-group">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <label style={{ fontSize: '14px', fontWeight: '500', cursor: 'pointer' }}>
+                        Include Reasoning
+                      </label>
+                      <input
+                        type="checkbox"
+                        checked={groqSettings.include_reasoning ?? true}
+                        onChange={(e) => {
+                          handleChange('include_reasoning', e.target.checked);
+                          handleChange('reasoning_format', undefined);
+                        }}
+                        style={{ cursor: 'pointer' }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                <div className="setting-group">
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>
+                    Max Completion Tokens
+                  </label>
+                  <input
+                    type="number"
+                    placeholder="1024"
+                    value={groqSettings.max_completion_tokens || ''}
+                    onChange={(e) => {
+                      const val = e.target.value === '' ? undefined : parseInt(e.target.value);
+                      handleChange('max_completion_tokens', val);
+                    }}
+                    style={{ width: '100%', padding: '8px', border: '1px solid #E5E7EB', borderRadius: '4px' }}
+                  />
+                  <p style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+                    Recommended for reasoning models.
+                  </p>
+                </div>
+              </>
+            )}
+
+            {((!isCerebras && !isDeepSeek && !isGroq) || (isGroq && (modelId.toLowerCase().includes('scout') || modelId.toLowerCase().includes('maverick')))) && (
               <div className="setting-group" style={{ borderTop: '1px solid #F3F4F6', paddingTop: '16px' }}>
                 <h3 style={{ fontSize: '14px', fontWeight: '600', marginBottom: '12px', color: '#374151' }}>Vision Settings</h3>
                 <div className="setting-item" style={{ marginBottom: '16px' }}>

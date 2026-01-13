@@ -20,10 +20,13 @@ class CerebrasClient(OpenAICompatibleClient):
         sanitized_kwargs = kwargs.copy()
         
         # Remove unsupported parameters
-        sanitized_kwargs.pop("frequency_penalty", None)
-        sanitized_kwargs.pop("presence_penalty", None)
-        sanitized_kwargs.pop("logit_bias", None)
-        sanitized_kwargs.pop("service_tier", None)
+        unsupported_keys = [
+            "frequency_penalty", "presence_penalty", "logit_bias", "service_tier",
+            "thinking", "reasoning_format", "include_reasoning", "max_completion_tokens",
+            "enable_thinking", "thinking_budget", "min_p", "top_k"
+        ]
+        for key in unsupported_keys:
+            sanitized_kwargs.pop(key, None)
         
         extra_body = sanitized_kwargs.pop("extra_body", {}) or {}
         

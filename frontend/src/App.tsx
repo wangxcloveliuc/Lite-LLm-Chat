@@ -4,7 +4,7 @@ import Header from './components/Header';
 import ChatArea from './components/ChatArea';
 import SettingsSidebar from './components/SettingsSidebar';
 import { apiClient } from './api/apiClient';
-import type { Provider, Model, Session, Message, DeepSeekSettings, DoubaoSettings, SiliconFlowSettings, CerebrasSettings } from './types';
+import type { Provider, Model, Session, Message, DeepSeekSettings, DoubaoSettings, SiliconFlowSettings, CerebrasSettings, GroqSettings } from './types';
 import './App.css';
 
 function App() {
@@ -75,6 +75,20 @@ function App() {
     system_prompt: '',
     reasoning_effort: 'medium',
     disable_reasoning: false,
+  });
+  const [groqSettings, setGroqSettings] = useState<GroqSettings>({
+    frequency_penalty: 0,
+    max_tokens: undefined,
+    presence_penalty: 0,
+    temperature: 0.6,
+    top_p: 0.95,
+    stop: '',
+    system_prompt: '',
+    image_detail: 'auto',
+    reasoning_format: 'parsed',
+    include_reasoning: true,
+    reasoning_effort: 'default',
+    max_completion_tokens: undefined,
   });
 
   useEffect(() => {
@@ -202,6 +216,11 @@ function App() {
         ...cerebrasSettings,
         stop: cerebrasSettings.stop ? cerebrasSettings.stop.split(',').map((s: string) => s.trim()) : undefined,
       };
+    } else if (selectedProvider === 'groq') {
+      currentSettings = {
+        ...groqSettings,
+        stop: groqSettings.stop ? groqSettings.stop.split(',').map((s: string) => s.trim()) : undefined,
+      };
     } else {
       // Fallback to deepseek settings as default for other providers (common basic settings)
       currentSettings = {
@@ -235,6 +254,8 @@ function App() {
         thinking: currentSettings.thinking,
         reasoning_effort: currentSettings.reasoning_effort,
         disable_reasoning: currentSettings.disable_reasoning,
+        reasoning_format: currentSettings.reasoning_format,
+        include_reasoning: currentSettings.include_reasoning,
         max_completion_tokens: currentSettings.max_completion_tokens,
         enable_thinking: currentSettings.enable_thinking,
         thinking_budget: currentSettings.thinking_budget,
@@ -428,7 +449,7 @@ function App() {
         onClose={() => setShowSettings(false)}
         provider={selectedProvider}
         modelId={selectedModel}
-        settings={selectedProvider === 'doubao' ? doubaoSettings : (selectedProvider === 'siliconflow' ? siliconflowSettings : (selectedProvider === 'cerebras' ? cerebrasSettings : deepseekSettings))}
+        settings={selectedProvider === 'doubao' ? doubaoSettings : (selectedProvider === 'siliconflow' ? siliconflowSettings : (selectedProvider === 'cerebras' ? cerebrasSettings : (selectedProvider === 'groq' ? groqSettings : deepseekSettings)))}
         onSettingsChange={(newSettings) => {
           if (selectedProvider === 'doubao') {
             setDoubaoSettings(newSettings);
@@ -436,6 +457,8 @@ function App() {
             setSiliconflowSettings(newSettings);
           } else if (selectedProvider === 'cerebras') {
             setCerebrasSettings(newSettings);
+          } else if (selectedProvider === 'groq') {
+            setGroqSettings(newSettings);
           } else {
             setDeepseekSettings(newSettings);
           }

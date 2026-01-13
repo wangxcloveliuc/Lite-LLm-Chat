@@ -176,14 +176,21 @@ class OpenAICompatibleClient(BaseClient):
         **kwargs,
     ) -> Tuple[str, str]:
         try:
-            # Clean up kwargs
+            # Clean up kwargs to remove custom parameters not supported by the base OpenAI SDK
             sanitized_kwargs = kwargs.copy()
             image_detail = sanitized_kwargs.pop("image_detail", None)
             image_pixel_limit = sanitized_kwargs.pop("image_pixel_limit", None)
             fps = sanitized_kwargs.pop("fps", None)
             video_detail = sanitized_kwargs.pop("video_detail", None)
             max_frames = sanitized_kwargs.pop("max_frames", None)
-            for key in ["thinking", "reasoning_effort"]:
+            
+            # Remove all extended settings that are not part of standard OpenAI chat/completions/create
+            extended_keys = [
+                "thinking", "reasoning_effort", "disable_reasoning", "reasoning_format", 
+                "include_reasoning", "max_completion_tokens", "enable_thinking", 
+                "thinking_budget", "min_p", "top_k"
+            ]
+            for key in extended_keys:
                 sanitized_kwargs.pop(key, None)
 
             processed_messages = self._process_messages(
@@ -229,7 +236,14 @@ class OpenAICompatibleClient(BaseClient):
             fps = sanitized_kwargs.pop("fps", None)
             video_detail = sanitized_kwargs.pop("video_detail", None)
             max_frames = sanitized_kwargs.pop("max_frames", None)
-            for key in ["thinking", "reasoning_effort"]:
+            
+            # Remove all extended settings that are not part of standard OpenAI chat/completions/create
+            extended_keys = [
+                "thinking", "reasoning_effort", "disable_reasoning", "reasoning_format", 
+                "include_reasoning", "max_completion_tokens", "enable_thinking", 
+                "thinking_budget", "min_p", "top_k"
+            ]
+            for key in extended_keys:
                 sanitized_kwargs.pop(key, None)
 
             processed_messages = self._process_messages(

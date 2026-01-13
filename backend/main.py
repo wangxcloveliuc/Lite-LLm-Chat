@@ -526,6 +526,10 @@ async def chat_completion(
                     provider_kwargs["reasoning_effort"] = chat_request.reasoning_effort
                 if chat_request.disable_reasoning is not None:
                     provider_kwargs["disable_reasoning"] = chat_request.disable_reasoning
+                if chat_request.reasoning_format is not None:
+                    provider_kwargs["reasoning_format"] = chat_request.reasoning_format
+                if chat_request.include_reasoning is not None:
+                    provider_kwargs["include_reasoning"] = chat_request.include_reasoning
                 if chat_request.max_completion_tokens is not None:
                     provider_kwargs["max_completion_tokens"] = chat_request.max_completion_tokens
                 if chat_request.enable_thinking is not None:
@@ -665,6 +669,10 @@ async def chat_completion(
                 provider_kwargs["reasoning_effort"] = chat_request.reasoning_effort
             if chat_request.disable_reasoning is not None:
                 provider_kwargs["disable_reasoning"] = chat_request.disable_reasoning
+            if chat_request.reasoning_format is not None:
+                provider_kwargs["reasoning_format"] = chat_request.reasoning_format
+            if chat_request.include_reasoning is not None:
+                provider_kwargs["include_reasoning"] = chat_request.include_reasoning
             if chat_request.max_completion_tokens is not None:
                 provider_kwargs["max_completion_tokens"] = chat_request.max_completion_tokens
             if chat_request.enable_thinking is not None:
