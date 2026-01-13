@@ -14,7 +14,6 @@ class DoubaoProvider(BaseLLMProvider):
 
     async def list_models(self) -> List[Dict[str, object]]:
         model_ids = [
-            "doubao-seed-code-preview-251028",
             "doubao-1-5-vision-pro-32k-250115",
             "doubao-1-5-lite-32k-250115",
             "doubao-1-5-pro-32k-250115",
