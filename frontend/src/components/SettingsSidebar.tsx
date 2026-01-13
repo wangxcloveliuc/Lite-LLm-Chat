@@ -1,12 +1,12 @@
 import React, { useEffect, useRef } from 'react';
-import type { DeepSeekSettings, DoubaoSettings, SiliconFlowSettings } from '../types';
+import type { DeepSeekSettings, DoubaoSettings, SiliconFlowSettings, CerebrasSettings } from '../types';
 
 interface SettingsSidebarProps {
   isOpen: boolean;
   onClose: () => void;
   provider: string;
   modelId: string;
-  settings: DeepSeekSettings | DoubaoSettings | SiliconFlowSettings;
+  settings: DeepSeekSettings | DoubaoSettings | SiliconFlowSettings | CerebrasSettings;
   onSettingsChange: (settings: any) => void;
 }
 
@@ -14,6 +14,7 @@ const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
   isOpen,
   onClose,
   provider,
+  modelId,
   settings,
   onSettingsChange,
 }) => {
@@ -48,6 +49,7 @@ const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
   const isDeepSeek = provider === 'deepseek';
   const isDoubao = provider === 'doubao';
   const isSiliconFlow = provider === 'siliconflow';
+  const isCerebras = provider === 'cerebras';
 
   const handleChange = (field: string, value: any) => {
     onSettingsChange({
@@ -58,6 +60,8 @@ const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
 
   const doubaoSettings = settings as DoubaoSettings;
   const siliconflowSettings = settings as SiliconFlowSettings;
+  const cerebrasSettings = settings as CerebrasSettings;
+  const deepseekSettings = settings as DeepSeekSettings;
 
   return (
     <div className="settings-sidebar" ref={sidebarRef}>
@@ -83,7 +87,7 @@ const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
       </div>
 
       <div className="settings-content" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-        {isDeepSeek || isDoubao || isSiliconFlow ? (
+        {isDeepSeek || isDoubao || isSiliconFlow || isCerebras ? (
           <>
             {isDoubao && (
               <>
@@ -238,123 +242,168 @@ const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
               </>
             )}
 
-            <div className="setting-group" style={{ borderTop: '1px solid #F3F4F6', paddingTop: '16px' }}>
-              <h3 style={{ fontSize: '14px', fontWeight: '600', marginBottom: '12px', color: '#374151' }}>Vision Settings</h3>
-              <div className="setting-item" style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>
-                  Image Detail
-                </label>
-                <select
-                  value={settings.image_detail || 'auto'}
-                  onChange={(e) => handleChange('image_detail', e.target.value)}
-                  style={{ width: '100%', padding: '8px', border: '1px solid #E5E7EB', borderRadius: '4px', fontSize: '14px' }}
-                >
-                  <option value="auto">Auto</option>
-                  <option value="low">Low</option>
-                  <option value="high">High</option>
-                </select>
-                <p style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
-                  Control the level of detail used for images.
-                </p>
-              </div>
+            {isCerebras && (
+              <>
+                {(modelId.toLowerCase().includes('gpt-oss')) && (
+                  <div className="setting-group">
+                    <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>
+                      Reasoning Effort
+                    </label>
+                    <select
+                      value={cerebrasSettings.reasoning_effort || 'medium'}
+                      onChange={(e) => handleChange('reasoning_effort', e.target.value)}
+                      style={{ width: '100%', padding: '8px', border: '1px solid #E5E7EB', borderRadius: '4px', fontSize: '14px' }}
+                    >
+                      <option value="low">Low</option>
+                      <option value="medium">Medium</option>
+                      <option value="high">High</option>
+                    </select>
+                    <p style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+                      Adjust the depth of reasoning process (gpt-oss models only).
+                    </p>
+                  </div>
+                )}
 
-              <div className="setting-item">
-                <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>
-                  Image Pixel Limit
-                </label>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <input
-                    type="number"
-                    placeholder="Max Pixels"
-                    value={settings.image_pixel_limit?.max_pixels || ''}
-                    onChange={(e) => {
-                      const val = e.target.value === '' ? undefined : parseInt(e.target.value);
-                      handleChange('image_pixel_limit', {
-                        ...settings.image_pixel_limit,
-                        max_pixels: val
-                      });
-                    }}
-                    style={{ width: '50%', padding: '8px', border: '1px solid #E5E7EB', borderRadius: '4px' }}
-                  />
-                  <input
-                    type="number"
-                    placeholder="Min Pixels"
-                    value={settings.image_pixel_limit?.min_pixels || ''}
-                    onChange={(e) => {
-                      const val = e.target.value === '' ? undefined : parseInt(e.target.value);
-                      handleChange('image_pixel_limit', {
-                        ...settings.image_pixel_limit,
-                        min_pixels: val
-                      });
-                    }}
-                    style={{ width: '50%', padding: '8px', border: '1px solid #E5E7EB', borderRadius: '4px' }}
-                  />
+                {(modelId.toLowerCase().includes('zai')) && (
+                  <div className="setting-group">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <label style={{ fontSize: '14px', fontWeight: '500', cursor: 'pointer' }}>
+                        Disable Reasoning
+                      </label>
+                      <input
+                        type="checkbox"
+                        checked={cerebrasSettings.disable_reasoning || false}
+                        onChange={(e) => handleChange('disable_reasoning', e.target.checked)}
+                        style={{ cursor: 'pointer' }}
+                      />
+                    </div>
+                    <p style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+                      Disable reasoning for zai models.
+                    </p>
+                  </div>
+                )}
+              </>
+            )}
+
+            {!isCerebras && !isDeepSeek && (
+              <div className="setting-group" style={{ borderTop: '1px solid #F3F4F6', paddingTop: '16px' }}>
+                <h3 style={{ fontSize: '14px', fontWeight: '600', marginBottom: '12px', color: '#374151' }}>Vision Settings</h3>
+                <div className="setting-item" style={{ marginBottom: '16px' }}>
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>
+                    Image Detail
+                  </label>
+                  <select
+                    value={deepseekSettings.image_detail || 'auto'}
+                    onChange={(e) => handleChange('image_detail', e.target.value)}
+                    style={{ width: '100%', padding: '8px', border: '1px solid #E5E7EB', borderRadius: '4px', fontSize: '14px' }}
+                  >
+                    <option value="auto">Auto</option>
+                    <option value="low">Low</option>
+                    <option value="high">High</option>
+                  </select>
+                  <p style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+                    Control the level of detail used for images.
+                  </p>
                 </div>
-                <p style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
-                  Set max/min pixels for image processing.
-                </p>
-              </div>
 
-              <div className="setting-item">
-                <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>
-                  Video FPS ({settings.fps || 'Auto'})
-                </label>
-                <input
-                  type="number"
-                  min="0.1"
-                  max="10"
-                  step="0.1"
-                  placeholder="e.g. 1.0"
-                  value={settings.fps || ''}
-                  onChange={(e) => {
-                    const val = e.target.value === '' ? undefined : parseFloat(e.target.value);
-                    handleChange('fps', val);
-                  }}
-                  style={{ width: '100%', padding: '8px', border: '1px solid #E5E7EB', borderRadius: '4px' }}
-                />
-                <p style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
-                  Sampling rate for video understanding (frames per second).
-                </p>
-              </div>
+                <div className="setting-item">
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>
+                    Image Pixel Limit
+                  </label>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <input
+                      type="number"
+                      placeholder="Max Pixels"
+                      value={deepseekSettings.image_pixel_limit?.max_pixels || ''}
+                      onChange={(e) => {
+                        const val = e.target.value === '' ? undefined : parseInt(e.target.value);
+                        handleChange('image_pixel_limit', {
+                          ...deepseekSettings.image_pixel_limit,
+                          max_pixels: val
+                        });
+                      }}
+                      style={{ width: '50%', padding: '8px', border: '1px solid #E5E7EB', borderRadius: '4px' }}
+                    />
+                    <input
+                      type="number"
+                      placeholder="Min Pixels"
+                      value={deepseekSettings.image_pixel_limit?.min_pixels || ''}
+                      onChange={(e) => {
+                        const val = e.target.value === '' ? undefined : parseInt(e.target.value);
+                        handleChange('image_pixel_limit', {
+                          ...deepseekSettings.image_pixel_limit,
+                          min_pixels: val
+                        });
+                      }}
+                      style={{ width: '50%', padding: '8px', border: '1px solid #E5E7EB', borderRadius: '4px' }}
+                    />
+                  </div>
+                  <p style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+                    Set max/min pixels for image processing.
+                  </p>
+                </div>
 
-              <div className="setting-group">
-                <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>
-                  Video Detail ({settings.video_detail || 'auto'})
-                </label>
-                <select
-                  value={settings.video_detail || 'auto'}
-                  onChange={(e) => handleChange('video_detail', e.target.value)}
-                  style={{ width: '100%', padding: '8px', border: '1px solid #E5E7EB', borderRadius: '4px', fontSize: '14px' }}
-                >
-                  <option value="auto">Auto</option>
-                  <option value="low">Low</option>
-                  <option value="high">High</option>
-                </select>
-                <p style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
-                  Fidelity level for video processing.
-                </p>
-              </div>
+                <div className="setting-item">
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>
+                    Video FPS ({deepseekSettings.fps || 'Auto'})
+                  </label>
+                  <input
+                    type="number"
+                    min="0.1"
+                    max="10"
+                    step="0.1"
+                    placeholder="e.g. 1.0"
+                    value={deepseekSettings.fps || ''}
+                    onChange={(e) => {
+                      const val = e.target.value === '' ? undefined : parseFloat(e.target.value);
+                      handleChange('fps', val);
+                    }}
+                    style={{ width: '100%', padding: '8px', border: '1px solid #E5E7EB', borderRadius: '4px' }}
+                  />
+                  <p style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+                    Sampling rate for video understanding (frames per second).
+                  </p>
+                </div>
 
-              <div className="setting-group">
-                <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>
-                  Max Frames
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  placeholder="e.g. 10"
-                  value={settings.max_frames || ''}
-                  onChange={(e) => {
-                    const val = e.target.value === '' ? undefined : parseInt(e.target.value);
-                    handleChange('max_frames', val);
-                  }}
-                  style={{ width: '100%', padding: '8px', border: '1px solid #E5E7EB', borderRadius: '4px' }}
-                />
-                <p style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
-                  Specify how many frames to extract from video.
-                </p>
+                <div className="setting-group">
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>
+                    Video Detail ({deepseekSettings.video_detail || 'auto'})
+                  </label>
+                  <select
+                    value={deepseekSettings.video_detail || 'auto'}
+                    onChange={(e) => handleChange('video_detail', e.target.value)}
+                    style={{ width: '100%', padding: '8px', border: '1px solid #E5E7EB', borderRadius: '4px', fontSize: '14px' }}
+                  >
+                    <option value="auto">Auto</option>
+                    <option value="low">Low</option>
+                    <option value="high">High</option>
+                  </select>
+                  <p style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+                    Fidelity level for video processing.
+                  </p>
+                </div>
+
+                <div className="setting-group">
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>
+                    Max Frames
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    placeholder="e.g. 10"
+                    value={deepseekSettings.max_frames || ''}
+                    onChange={(e) => {
+                      const val = e.target.value === '' ? undefined : parseInt(e.target.value);
+                      handleChange('max_frames', val);
+                    }}
+                    style={{ width: '100%', padding: '8px', border: '1px solid #E5E7EB', borderRadius: '4px' }}
+                  />
+                  <p style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+                    Specify how many frames to extract from video.
+                  </p>
+                </div>
               </div>
-            </div>
+            )}
 
             <div className="setting-group">
               <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>
@@ -425,41 +474,45 @@ const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
               </p>
             </div>
 
-            <div className="setting-group">
-              <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>
-                Frequency Penalty ({settings.frequency_penalty})
-              </label>
-              <input
-                type="range"
-                min="-2"
-                max="2"
-                step="0.1"
-                value={settings.frequency_penalty}
-                onChange={(e) => handleChange('frequency_penalty', parseFloat(e.target.value))}
-                style={{ width: '100%' }}
-              />
-              <p style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
-                Penalizes new tokens based on their frequency in the text so far.
-              </p>
-            </div>
+            {!isCerebras && (
+              <>
+                <div className="setting-group">
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>
+                    Frequency Penalty ({deepseekSettings.frequency_penalty})
+                  </label>
+                  <input
+                    type="range"
+                    min="-2"
+                    max="2"
+                    step="0.1"
+                    value={deepseekSettings.frequency_penalty}
+                    onChange={(e) => handleChange('frequency_penalty', parseFloat(e.target.value))}
+                    style={{ width: '100%' }}
+                  />
+                  <p style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+                    Penalizes new tokens based on their frequency in the text so far.
+                  </p>
+                </div>
 
-            <div className="setting-group">
-              <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>
-                Presence Penalty ({settings.presence_penalty})
-              </label>
-              <input
-                type="range"
-                min="-2"
-                max="2"
-                step="0.1"
-                value={settings.presence_penalty}
-                onChange={(e) => handleChange('presence_penalty', parseFloat(e.target.value))}
-                style={{ width: '100%' }}
-              />
-              <p style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
-                Penalizes new tokens based on whether they appear in the text so far.
-              </p>
-            </div>
+                <div className="setting-group">
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>
+                    Presence Penalty ({deepseekSettings.presence_penalty})
+                  </label>
+                  <input
+                    type="range"
+                    min="-2"
+                    max="2"
+                    step="0.1"
+                    value={deepseekSettings.presence_penalty}
+                    onChange={(e) => handleChange('presence_penalty', parseFloat(e.target.value))}
+                    style={{ width: '100%' }}
+                  />
+                  <p style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+                    Penalizes new tokens based on whether they appear in the text so far.
+                  </p>
+                </div>
+              </>
+            )}
 
             <div className="setting-group">
               <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>

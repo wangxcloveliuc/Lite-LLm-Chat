@@ -4,7 +4,7 @@ import Header from './components/Header';
 import ChatArea from './components/ChatArea';
 import SettingsSidebar from './components/SettingsSidebar';
 import { apiClient } from './api/apiClient';
-import type { Provider, Model, Session, Message, DeepSeekSettings, DoubaoSettings, SiliconFlowSettings } from './types';
+import type { Provider, Model, Session, Message, DeepSeekSettings, DoubaoSettings, SiliconFlowSettings, CerebrasSettings } from './types';
 import './App.css';
 
 function App() {
@@ -66,6 +66,15 @@ function App() {
     thinking_budget: undefined,
     min_p: undefined,
     top_k: undefined,
+  });
+  const [cerebrasSettings, setCerebrasSettings] = useState<CerebrasSettings>({
+    max_tokens: undefined,
+    temperature: 1,
+    top_p: 1,
+    stop: '',
+    system_prompt: '',
+    reasoning_effort: 'medium',
+    disable_reasoning: false,
   });
 
   useEffect(() => {
@@ -188,6 +197,11 @@ function App() {
         ...siliconflowSettings,
         stop: siliconflowSettings.stop ? siliconflowSettings.stop.split(',').map((s: string) => s.trim()) : undefined,
       };
+    } else if (selectedProvider === 'cerebras') {
+      currentSettings = {
+        ...cerebrasSettings,
+        stop: cerebrasSettings.stop ? cerebrasSettings.stop.split(',').map((s: string) => s.trim()) : undefined,
+      };
     } else {
       // Fallback to deepseek settings as default for other providers (common basic settings)
       currentSettings = {
@@ -220,6 +234,7 @@ function App() {
         // Doubao-specific settings
         thinking: currentSettings.thinking,
         reasoning_effort: currentSettings.reasoning_effort,
+        disable_reasoning: currentSettings.disable_reasoning,
         max_completion_tokens: currentSettings.max_completion_tokens,
         enable_thinking: currentSettings.enable_thinking,
         thinking_budget: currentSettings.thinking_budget,
@@ -413,12 +428,14 @@ function App() {
         onClose={() => setShowSettings(false)}
         provider={selectedProvider}
         modelId={selectedModel}
-        settings={selectedProvider === 'doubao' ? doubaoSettings : (selectedProvider === 'siliconflow' ? siliconflowSettings : deepseekSettings)}
+        settings={selectedProvider === 'doubao' ? doubaoSettings : (selectedProvider === 'siliconflow' ? siliconflowSettings : (selectedProvider === 'cerebras' ? cerebrasSettings : deepseekSettings))}
         onSettingsChange={(newSettings) => {
           if (selectedProvider === 'doubao') {
             setDoubaoSettings(newSettings);
           } else if (selectedProvider === 'siliconflow') {
             setSiliconflowSettings(newSettings);
+          } else if (selectedProvider === 'cerebras') {
+            setCerebrasSettings(newSettings);
           } else {
             setDeepseekSettings(newSettings);
           }

@@ -68,6 +68,16 @@ export interface SiliconFlowSettings extends DeepSeekSettings {
   top_k?: number;
 }
 
+export interface CerebrasSettings {
+  max_tokens?: number;
+  temperature: number;
+  top_p: number;
+  stop: string;
+  system_prompt: string;
+  reasoning_effort?: 'low' | 'medium' | 'high';
+  disable_reasoning?: boolean;
+}
+
 export interface ChatRequest {
   provider: string;
   model: string;
@@ -87,6 +97,7 @@ export interface ChatRequest {
   // Extended settings
   thinking?: boolean;
   reasoning_effort?: string;
+  disable_reasoning?: boolean;
   max_completion_tokens?: number;
   enable_thinking?: boolean;
   thinking_budget?: number;
