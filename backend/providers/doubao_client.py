@@ -125,6 +125,13 @@ class DoubaoClient(BaseClient):
             image_detail = kwargs.pop("image_detail", None)
             image_pixel_limit = kwargs.pop("image_pixel_limit", None)
             fps = kwargs.pop("fps", None)
+            kwargs.pop("video_detail", None)
+            kwargs.pop("max_frames", None)
+            
+            # Additional cleanup for other potential parameters
+            for key in ["disable_reasoning", "reasoning_format", "include_reasoning", 
+                        "enable_thinking", "thinking_budget", "min_p", "top_k"]:
+                kwargs.pop(key, None)
 
             if thinking is True:
                 extra_body["thinking"] = {"type": "enabled"}
@@ -177,6 +184,13 @@ class DoubaoClient(BaseClient):
             image_detail = kwargs.pop("image_detail", None)
             image_pixel_limit = kwargs.pop("image_pixel_limit", None)
             fps = kwargs.pop("fps", None)
+            kwargs.pop("video_detail", None)
+            kwargs.pop("max_frames", None)
+            
+            # Additional cleanup for other potential parameters
+            for key in ["disable_reasoning", "reasoning_format", "include_reasoning", 
+                        "enable_thinking", "thinking_budget", "min_p", "top_k"]:
+                kwargs.pop(key, None)
 
             if thinking is True:
                 extra_body["thinking"] = {"type": "enabled"}
