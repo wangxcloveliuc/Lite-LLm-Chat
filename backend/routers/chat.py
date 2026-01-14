@@ -1,5 +1,8 @@
 import asyncio
 import json
+import os
+import uuid
+import httpx
 from datetime import datetime, timezone
 from typing import List, Optional
 
@@ -14,6 +17,38 @@ from provider_registry import get_provider
 
 
 router = APIRouter()
+
+
+async def _save_remote_image(url: str) -> str:
+    """Download remote image and save to local uploads directory."""
+    if not url.startswith("http"):
+        return url
+
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(url, timeout=30.0)
+            if response.status_code == 200:
+                # Determine extension
+                content_type = response.headers.get("content-type", "")
+                ext = ".png"
+                if "jpeg" in content_type:
+                    ext = ".jpg"
+                elif "webp" in content_type:
+                    ext = ".webp"
+
+                filename = f"{uuid.uuid4()}{ext}"
+                upload_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads")
+                os.makedirs(upload_dir, exist_ok=True)
+                
+                filepath = os.path.join(upload_dir, filename)
+                with open(filepath, "wb") as f:
+                    f.write(response.content)
+                
+                return f"/uploads/{filename}"
+    except Exception as e:
+        print(f"Error saving remote image {url}: {e}")
+    
+    return url
 
 
 def _ensure_list(data):
@@ -255,23 +290,42 @@ async def chat_completion(
                         except asyncio.CancelledError:
                             return
 
+                        try:
+                            chunk_data = json.loads(chunk[6:])
+                            if "content" in chunk_data:
+                                content_val = chunk_data["content"]
+                                # Intercept and localize images in streaming content
+                                if "! [image]" in content_val or "![" in content_val:
+                                    import re
+                                    img_pattern = r"!\[image\]\((https?://[^\)]+)\)"
+                                    matches = re.finditer(img_pattern, content_val)
+                                    modified = False
+                                    for match in matches:
+                                        original_url = match.group(1)
+                                        local_path = await _save_remote_image(original_url)
+                                        if local_path != original_url:
+                                            content_val = content_val.replace(original_url, local_path)
+                                            modified = True
+                                    
+                                    if modified:
+                                        chunk_data["content"] = content_val
+                                        chunk = f"data: {json.dumps(chunk_data)}\n\n"
+
+                                full_response += content_val
+                            
+                            if "reasoning" in chunk_data:
+                                full_reasoning += chunk_data["reasoning"]
+                            if "error" in chunk_data:
+                                failed = True
+                                yield chunk # Send the error chunk
+                                break
+                        except Exception as e:
+                            print(f"Error processing chunk: {e}")
+                            pass
+
                         yield chunk
                         await asyncio.sleep(0)
-
                         next_chunk_task = asyncio.ensure_future(stream.__anext__())
-
-                        if chunk.startswith("data: "):
-                            try:
-                                data = json.loads(chunk[6:])
-                                if "content" in data:
-                                    full_response += data["content"]
-                                if "reasoning" in data:
-                                    full_reasoning += data["reasoning"]
-                                if "error" in data:
-                                    failed = True
-                                    break
-                            except Exception:
-                                pass
                 finally:
                     if next_chunk_task is not None and not next_chunk_task.done():
                         next_chunk_task.cancel()
@@ -295,6 +349,20 @@ async def chat_completion(
 
             try:
                 if full_response:
+                    # Look for Markdown images in full_response and save them locally
+                    # Pattern: ![image](url)
+                    import re
+                    img_pattern = r"!\[image\]\((https?://[^\)]+)\)"
+                    matches = re.finditer(img_pattern, full_response)
+                    
+                    found_urls = []
+                    for match in matches:
+                        original_url = match.group(1)
+                        local_path = await _save_remote_image(original_url)
+                        if local_path != original_url:
+                            full_response = full_response.replace(original_url, local_path)
+                            found_urls.append(local_path)
+
                     assistant_message = ChatMessage(
                         session_id=session.id,
                         role="assistant",
@@ -308,7 +376,8 @@ async def chat_completion(
                     session.model = model_id
                     session.updated_at = datetime.now(timezone.utc)
                     db.commit()
-            except Exception:
+            except Exception as e:
+                print(f"Error saving assistant response: {e}")
                 yield f"data: {json.dumps({'error': 'Failed to save assistant response'})}\n\n"
 
         headers = {
@@ -391,6 +460,19 @@ async def chat_completion(
             messages=api_messages,
             **provider_kwargs,
         )
+
+        # Process images for non-streaming response
+        import re
+        img_pattern = r"!\[image\]\((https?://[^\)]+)\)"
+        matches = re.finditer(img_pattern, response_content)
+        found_urls = []
+        for match in matches:
+            original_url = match.group(1)
+            local_path = await _save_remote_image(original_url)
+            if local_path != original_url:
+                response_content = response_content.replace(original_url, local_path)
+                found_urls.append(local_path)
+
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

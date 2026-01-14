@@ -185,10 +185,10 @@ function ChatMessage({
                 img({ src, alt }) {
                   return (
                     <img 
-                      src={src} 
+                      src={src ? getFullImageUrl(src) : ''} 
                       alt={alt} 
                       className="message-markdown-image" 
-                      onClick={() => src && onImageClick(src)}
+                      onClick={() => src && onImageClick(getFullImageUrl(src))}
                       title="Click to view full size"
                     />
                   );
@@ -498,13 +498,17 @@ export default function ChatArea({
 
       {selectedImageUrl && (
         <div className="lightbox-overlay" onClick={() => setSelectedImageUrl(null)}>
-          <button className="lightbox-close" onClick={() => setSelectedImageUrl(null)}>
+          <button className="lightbox-close" onClick={(e) => { e.stopPropagation(); setSelectedImageUrl(null); }}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M18 6L6 18M6 6l12 12" />
             </svg>
           </button>
           <div className="lightbox-content" onClick={(e) => e.stopPropagation()}>
-            <img src={selectedImageUrl} alt="Full size" />
+            <img 
+              src={selectedImageUrl} 
+              alt="Full size" 
+              loading="lazy"
+            />
           </div>
         </div>
       )}
