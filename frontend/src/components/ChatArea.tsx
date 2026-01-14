@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import type { CSSProperties } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkBreaks from 'remark-breaks';
@@ -6,6 +7,9 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { apiClient } from '../api/apiClient';
 import type { Message } from '../types';
+import type { Components } from 'react-markdown';
+
+const syntaxTheme: { [key: string]: CSSProperties } = oneLight as unknown as { [key: string]: CSSProperties };
 
 interface ChatAreaProps {
   messages: Message[];
@@ -158,25 +162,26 @@ function ChatMessage({
         <div className="message-content">
           <ReactMarkdown
             remarkPlugins={[remarkGfm, remarkBreaks]}
-            components={{
-              code({ node, inline, className, children, ...props }: any) {
-                const match = /language-(\w+)/.exec(className || '');
-                return !inline && match ? (
-                  <SyntaxHighlighter
-                    style={oneLight}
-                    language={match[1]}
-                    PreTag="div"
-                    {...props}
-                  >
-                    {String(children).replace(/\n$/, '')}
-                  </SyntaxHighlighter>
-                ) : (
-                  <code className={className} {...props}>
-                    {children}
-                  </code>
-                );
-              },
-            }}
+            components={
+              {
+                code({ className, children, ...props }) {
+                  const match = /language-(\w+)/.exec(className || '');
+                  return match ? (
+                    <SyntaxHighlighter
+                      style={syntaxTheme}
+                      language={match[1]}
+                      PreTag="div"
+                    >
+                      {String(children).replace(/\n$/, '')}
+                    </SyntaxHighlighter>
+                  ) : (
+                    <code className={className} {...props}>
+                      {children}
+                    </code>
+                  );
+                },
+              } satisfies Components
+            }
           >
             {message.content}
           </ReactMarkdown>
@@ -405,7 +410,10 @@ export default function ChatArea({
                 )}
                 {file.progress < 100 && (
                   <div className="upload-progress-overlay">
-                    <div className="progress-ring" style={{ '--progress': `${file.progress}%` } as any}></div>
+                    <div
+                      className="progress-ring"
+                      style={{ ['--progress' as string]: `${file.progress}%` }}
+                    ></div>
                   </div>
                 )}
                 <button className="remove-image-btn" onClick={() => removePendingFile(file.id)}>×</button>

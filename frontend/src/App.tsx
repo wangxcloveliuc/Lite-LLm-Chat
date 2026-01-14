@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import ChatArea from './components/ChatArea';
 import SettingsSidebar from './components/SettingsSidebar';
 import { apiClient } from './api/apiClient';
-import type { Provider, Model, Session, Message, DeepSeekSettings, DoubaoSettings, SiliconFlowSettings, CerebrasSettings, GroqSettings, MistralSettings } from './types';
+import type { Provider, Model, Session, Message, DeepSeekSettings, DoubaoSettings, SiliconFlowSettings, CerebrasSettings, GroqSettings, MistralSettings, ChatRequest } from './types';
 import './App.css';
 
 function App() {
@@ -102,10 +102,61 @@ function App() {
     presence_penalty: 0,
   });
 
+  type ChatRequestSettings = {
+    temperature?: number;
+    max_tokens?: number;
+    frequency_penalty?: number;
+    presence_penalty?: number;
+    top_p?: number;
+    stop?: string[];
+    system_prompt?: string;
+    image_detail?: string;
+    image_pixel_limit?: {
+      max_pixels?: number;
+      min_pixels?: number;
+    };
+    fps?: number;
+    video_detail?: string;
+    max_frames?: number;
+    safe_prompt?: boolean;
+    random_seed?: number;
+    thinking?: boolean;
+    reasoning_effort?: string;
+    disable_reasoning?: boolean;
+    reasoning_format?: string;
+    include_reasoning?: boolean;
+    max_completion_tokens?: number;
+    enable_thinking?: boolean;
+    thinking_budget?: number;
+    min_p?: number;
+    top_k?: number;
+  };
+
+  const loadProviders = useCallback(async () => {
+    const data = await apiClient.getProviders();
+    setProviders(data);
+    if (data.length > 0 && !selectedProvider) {
+      setSelectedProvider(data[0].id);
+    }
+  }, [selectedProvider]);
+
+  const loadModels = useCallback(async (provider: string) => {
+    const data = await apiClient.getModels(provider);
+    setModels(data);
+    if (data.length > 0 && !selectedModel) {
+      setSelectedModel(data[0].id);
+    }
+  }, [selectedModel]);
+
+  const loadSessions = useCallback(async () => {
+    const data = await apiClient.getSessions();
+    setSessions(data);
+  }, []);
+
   useEffect(() => {
     loadProviders();
     loadSessions();
-  }, []);
+  }, [loadProviders, loadSessions]);
 
   const handleToggleSettings = async () => {
     // When opening settings, ensure models are loaded so modelId is set
@@ -119,28 +170,7 @@ function App() {
     if (selectedProvider) {
       loadModels(selectedProvider);
     }
-  }, [selectedProvider]);
-
-  const loadProviders = async () => {
-    const data = await apiClient.getProviders();
-    setProviders(data);
-    if (data.length > 0 && !selectedProvider) {
-      setSelectedProvider(data[0].id);
-    }
-  };
-
-  const loadModels = async (provider: string) => {
-    const data = await apiClient.getModels(provider);
-    setModels(data);
-    if (data.length > 0 && !selectedModel) {
-      setSelectedModel(data[0].id);
-    }
-  };
-
-  const loadSessions = async () => {
-    const data = await apiClient.getSessions();
-    setSessions(data);
-  };
+  }, [loadModels, selectedProvider]);
 
   const handleNewChat = () => {
     setCurrentSessionId(null);
@@ -206,47 +236,47 @@ function App() {
     let newSessionId = currentSessionId;
 
     // Gather settings based on provider
-    let currentSettings: any = {};
+    let currentSettings: ChatRequestSettings = {};
     if (selectedProvider === 'doubao') {
       currentSettings = {
         ...doubaoSettings,
-        stop: doubaoSettings.stop ? doubaoSettings.stop.split(',').map((s: string) => s.trim()) : undefined,
+        stop: doubaoSettings.stop ? doubaoSettings.stop.split(',').map((s) => s.trim()) : undefined,
       };
     } else if (selectedProvider === 'deepseek') {
       currentSettings = {
         ...deepseekSettings,
-        stop: deepseekSettings.stop ? deepseekSettings.stop.split(',').map((s: string) => s.trim()) : undefined,
+        stop: deepseekSettings.stop ? deepseekSettings.stop.split(',').map((s) => s.trim()) : undefined,
       };
     } else if (selectedProvider === 'siliconflow') {
       currentSettings = {
         ...siliconflowSettings,
-        stop: siliconflowSettings.stop ? siliconflowSettings.stop.split(',').map((s: string) => s.trim()) : undefined,
+        stop: siliconflowSettings.stop ? siliconflowSettings.stop.split(',').map((s) => s.trim()) : undefined,
       };
     } else if (selectedProvider === 'cerebras') {
       currentSettings = {
         ...cerebrasSettings,
-        stop: cerebrasSettings.stop ? cerebrasSettings.stop.split(',').map((s: string) => s.trim()) : undefined,
+        stop: cerebrasSettings.stop ? cerebrasSettings.stop.split(',').map((s) => s.trim()) : undefined,
       };
     } else if (selectedProvider === 'groq') {
       currentSettings = {
         ...groqSettings,
-        stop: groqSettings.stop ? groqSettings.stop.split(',').map((s: string) => s.trim()) : undefined,
+        stop: groqSettings.stop ? groqSettings.stop.split(',').map((s) => s.trim()) : undefined,
       };
     } else if (selectedProvider === 'mistral') {
       currentSettings = {
         ...mistralSettings,
-        stop: mistralSettings.stop ? mistralSettings.stop.split(',').map((s: string) => s.trim()) : undefined,
+        stop: mistralSettings.stop ? mistralSettings.stop.split(',').map((s) => s.trim()) : undefined,
       };
     } else {
       // Fallback to deepseek settings as default for other providers (common basic settings)
       currentSettings = {
         ...deepseekSettings,
-        stop: deepseekSettings.stop ? deepseekSettings.stop.split(',').map((s: string) => s.trim()) : undefined,
+        stop: deepseekSettings.stop ? deepseekSettings.stop.split(',').map((s) => s.trim()) : undefined,
       };
     }
 
     try {
-      const request = {
+      const request: ChatRequest = {
         provider: selectedProvider,
         model: selectedModel,
         messages: [{ role: 'user', content, images: imageUrls, videos: videoUrls, audios: audioUrls }],
@@ -322,8 +352,8 @@ function App() {
           break;
         }
       }
-    } catch (error: any) {
-      if (error.name === 'AbortError') {
+    } catch (error: unknown) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
         console.log('Generation aborted');
       } else {
         console.error('Chat error:', error);
@@ -478,17 +508,17 @@ function App() {
         }
         onSettingsChange={(newSettings) => {
           if (selectedProvider === 'doubao') {
-            setDoubaoSettings(newSettings);
+            setDoubaoSettings(newSettings as DoubaoSettings);
           } else if (selectedProvider === 'siliconflow') {
-            setSiliconflowSettings(newSettings);
+            setSiliconflowSettings(newSettings as SiliconFlowSettings);
           } else if (selectedProvider === 'cerebras') {
-            setCerebrasSettings(newSettings);
+            setCerebrasSettings(newSettings as CerebrasSettings);
           } else if (selectedProvider === 'groq') {
-            setGroqSettings(newSettings);
+            setGroqSettings(newSettings as GroqSettings);
           } else if (selectedProvider === 'mistral') {
-            setMistralSettings(newSettings);
+            setMistralSettings(newSettings as MistralSettings);
           } else {
-            setDeepseekSettings(newSettings);
+            setDeepseekSettings(newSettings as DeepSeekSettings);
           }
         }}
       />

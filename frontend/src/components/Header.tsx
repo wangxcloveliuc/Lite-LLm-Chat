@@ -34,12 +34,6 @@ export default function Header({
   );
 
   useEffect(() => {
-    if (!showModelDropdown) {
-      setModelSearch('');
-    }
-  }, [showModelDropdown]);
-
-  useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (
         providerRef.current &&
@@ -52,6 +46,7 @@ export default function Header({
         !modelRef.current.contains(event.target as Node)
       ) {
         setShowModelDropdown(false);
+        setModelSearch('');
       }
     }
 
@@ -124,7 +119,13 @@ export default function Header({
         <div className="dropdown-wrapper" ref={modelRef}>
           <div
             className="model-selector"
-            onClick={() => setShowModelDropdown(!showModelDropdown)}
+            onClick={() => {
+              const next = !showModelDropdown;
+              setShowModelDropdown(next);
+              if (!next) {
+                setModelSearch('');
+              }
+            }}
           >
             <span>{selectedModelObj?.name || 'Model'}</span>
             <svg
@@ -169,6 +170,7 @@ export default function Header({
                     onClick={() => {
                       onModelChange(model.id);
                       setShowModelDropdown(false);
+                      setModelSearch('');
                     }}
                   >
                     <span className="provider-name">{model.name}</span>
