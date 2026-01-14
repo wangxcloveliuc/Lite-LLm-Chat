@@ -129,6 +129,51 @@ class DoubaoClient(BaseClient):
         """Check if the model is a Seedance video generation model."""
         return "seedance" in model.lower()
 
+    def _prepare_chat_request(
+        self,
+        messages: List[Dict],
+        kwargs: Dict,
+    ) -> Tuple[List[Dict], Dict, Dict]:
+        extra_body = kwargs.pop("extra_body", {}) or {}
+        thinking = kwargs.pop("thinking", None)
+        reasoning_effort = kwargs.pop("reasoning_effort", None)
+        max_completion_tokens = kwargs.pop("max_completion_tokens", None)
+        image_detail = kwargs.pop("image_detail", None)
+        image_pixel_limit = kwargs.pop("image_pixel_limit", None)
+        fps = kwargs.pop("fps", None)
+        kwargs.pop("video_detail", None)
+        kwargs.pop("max_frames", None)
+
+        for key in [
+            "disable_reasoning",
+            "reasoning_format",
+            "include_reasoning",
+            "enable_thinking",
+            "thinking_budget",
+            "min_p",
+            "top_k",
+        ]:
+            kwargs.pop(key, None)
+
+        if thinking is True:
+            extra_body["thinking"] = {"type": "enabled"}
+        elif thinking is False:
+            extra_body["thinking"] = {"type": "disabled"}
+
+        if reasoning_effort:
+            extra_body["reasoning_effort"] = reasoning_effort
+
+        if max_completion_tokens is not None:
+            kwargs["max_completion_tokens"] = max_completion_tokens
+
+        processed_messages = self._process_messages(
+            messages,
+            image_detail=image_detail,
+            image_pixel_limit=image_pixel_limit,
+            fps=fps,
+        )
+        return processed_messages, extra_body, kwargs
+
     async def _download_and_save_video(self, video_url: str) -> str:
         """Download video from URL and save to local uploads directory."""
         try:
@@ -363,38 +408,7 @@ class DoubaoClient(BaseClient):
             return await self._handle_seedance(model, messages, **kwargs)
 
         try:
-            extra_body = kwargs.pop("extra_body", {}) or {}
-            thinking = kwargs.pop("thinking", None)
-            reasoning_effort = kwargs.pop("reasoning_effort", None)
-            max_completion_tokens = kwargs.pop("max_completion_tokens", None)
-            image_detail = kwargs.pop("image_detail", None)
-            image_pixel_limit = kwargs.pop("image_pixel_limit", None)
-            fps = kwargs.pop("fps", None)
-            kwargs.pop("video_detail", None)
-            kwargs.pop("max_frames", None)
-            
-            # Additional cleanup for other potential parameters
-            for key in ["disable_reasoning", "reasoning_format", "include_reasoning", 
-                        "enable_thinking", "thinking_budget", "min_p", "top_k"]:
-                kwargs.pop(key, None)
-
-            if thinking is True:
-                extra_body["thinking"] = {"type": "enabled"}
-            elif thinking is False:
-                extra_body["thinking"] = {"type": "disabled"}
-
-            if reasoning_effort:
-                extra_body["reasoning_effort"] = reasoning_effort
-
-            if max_completion_tokens is not None:
-                kwargs["max_completion_tokens"] = max_completion_tokens
-
-            processed_messages = self._process_messages(
-                messages, 
-                image_detail=image_detail, 
-                image_pixel_limit=image_pixel_limit,
-                fps=fps
-            )
+            processed_messages, extra_body, kwargs = self._prepare_chat_request(messages, kwargs)
 
             response = self.client.chat.completions.create(
                 model=model,
@@ -445,38 +459,7 @@ class DoubaoClient(BaseClient):
             return
 
         try:
-            extra_body = kwargs.pop("extra_body", {}) or {}
-            thinking = kwargs.pop("thinking", None)
-            reasoning_effort = kwargs.pop("reasoning_effort", None)
-            max_completion_tokens = kwargs.pop("max_completion_tokens", None)
-            image_detail = kwargs.pop("image_detail", None)
-            image_pixel_limit = kwargs.pop("image_pixel_limit", None)
-            fps = kwargs.pop("fps", None)
-            kwargs.pop("video_detail", None)
-            kwargs.pop("max_frames", None)
-            
-            # Additional cleanup for other potential parameters
-            for key in ["disable_reasoning", "reasoning_format", "include_reasoning", 
-                        "enable_thinking", "thinking_budget", "min_p", "top_k"]:
-                kwargs.pop(key, None)
-
-            if thinking is True:
-                extra_body["thinking"] = {"type": "enabled"}
-            elif thinking is False:
-                extra_body["thinking"] = {"type": "disabled"}
-
-            if reasoning_effort:
-                extra_body["reasoning_effort"] = reasoning_effort
-
-            if max_completion_tokens is not None:
-                kwargs["max_completion_tokens"] = max_completion_tokens
-
-            processed_messages = self._process_messages(
-                messages, 
-                image_detail=image_detail, 
-                image_pixel_limit=image_pixel_limit,
-                fps=fps
-            )
+            processed_messages, extra_body, kwargs = self._prepare_chat_request(messages, kwargs)
 
             response = self.client.chat.completions.create(
                 model=model,
