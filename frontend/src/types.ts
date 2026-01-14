@@ -61,6 +61,15 @@ export interface DoubaoSettings extends DeepSeekSettings {
   max_completion_tokens?: number;
 }
 
+export interface DoubaoSeedreamSettings {
+  size: string;
+  seed?: number;
+  sequential_image_generation: 'auto' | 'disabled';
+  max_images?: number;
+  watermark: boolean;
+  prompt_optimize_mode: 'standard' | 'fast';
+}
+
 export interface SiliconFlowSettings extends DeepSeekSettings {
   enable_thinking?: boolean;
   thinking_budget?: number;
@@ -159,6 +168,12 @@ export interface ChatRequest {
   // Gemini-specific
   seed?: number;
   safety_threshold?: string;
+  // Doubao Seedream specific
+  sequential_image_generation?: string;
+  max_images?: number;
+  watermark?: boolean;
+  prompt_optimize_mode?: string;
+  size?: string;
 }
 
 export interface StreamChunk {

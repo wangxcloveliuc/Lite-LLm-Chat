@@ -49,6 +49,14 @@ function App() {
     reasoning_effort: 'medium',
     max_completion_tokens: undefined,
   });
+  const [doubaoSeedreamSettings, setDoubaoSeedreamSettings] = useState<DoubaoSeedreamSettings>({
+    size: '2048x2048',
+    seed: undefined,
+    sequential_image_generation: 'disabled',
+    max_images: 1,
+    watermark: true,
+    prompt_optimize_mode: 'standard',
+  });
   const [siliconflowSettings, setSiliconflowSettings] = useState<SiliconFlowSettings>({
     frequency_penalty: 0,
     max_tokens: undefined,
@@ -172,6 +180,13 @@ function App() {
     top_k?: number;
     seed?: number;
     safety_threshold?: string;
+    // Doubao Seedream specific
+    sequential_image_generation?: string;
+    max_images?: number;
+    watermark?: boolean;
+    prompt_optimize_mode?: string;
+    size?: string;
+    seed?: number;
   };
 
   const loadProviders = useCallback(async () => {
@@ -279,7 +294,11 @@ function App() {
 
     // Gather settings based on provider
     let currentSettings: ChatRequestSettings = {};
-    if (selectedProvider === 'doubao') {
+    const isSeedream = selectedProvider === 'doubao' && selectedModel.toLowerCase().includes('seedream');
+
+    if (isSeedream) {
+      currentSettings = { ...doubaoSeedreamSettings } as any;
+    } else if (selectedProvider === 'doubao') {
       currentSettings = {
         ...doubaoSettings,
         stop: doubaoSettings.stop ? doubaoSettings.stop.split(',').map((s) => s.trim()) : undefined,
@@ -374,6 +393,12 @@ function App() {
         // Gemini-specific
         seed: currentSettings.seed,
         safety_threshold: currentSettings.safety_threshold,
+        // Doubao Seedream-specific
+        sequential_image_generation: (currentSettings as any).sequential_image_generation,
+        max_images: (currentSettings as any).max_images,
+        watermark: (currentSettings as any).watermark,
+        prompt_optimize_mode: (currentSettings as any).prompt_optimize_mode,
+        size: (currentSettings as any).size,
       };
 
       for await (const chunk of apiClient.chatStream(request, controller.signal)) {
@@ -563,6 +588,7 @@ function App() {
         provider={selectedProvider}
         modelId={selectedModel}
         settings={
+          (selectedProvider === 'doubao' && selectedModel.toLowerCase().includes('seedream')) ? doubaoSeedreamSettings :
           selectedProvider === 'doubao' ? doubaoSettings : 
           selectedProvider === 'siliconflow' ? siliconflowSettings : 
           selectedProvider === 'cerebras' ? cerebrasSettings : 
@@ -574,7 +600,9 @@ function App() {
           deepseekSettings
         }
         onSettingsChange={(newSettings) => {
-          if (selectedProvider === 'doubao') {
+          if (selectedProvider === 'doubao' && selectedModel.toLowerCase().includes('seedream')) {
+            setDoubaoSeedreamSettings(newSettings as DoubaoSeedreamSettings);
+          } else if (selectedProvider === 'doubao') {
             setDoubaoSettings(newSettings as DoubaoSettings);
           } else if (selectedProvider === 'siliconflow') {
             setSiliconflowSettings(newSettings as SiliconFlowSettings);

@@ -1,11 +1,11 @@
 import React, { useRef } from 'react';
-import type { DeepSeekSettings, DoubaoSettings, SiliconFlowSettings, CerebrasSettings, GroqSettings, GrokSettings, OpenRouterSettings, MistralSettings, GeminiSettings } from '../types';
+import type { DeepSeekSettings, DoubaoSettings, DoubaoSeedreamSettings, SiliconFlowSettings, CerebrasSettings, GroqSettings, GrokSettings, OpenRouterSettings, MistralSettings, GeminiSettings } from '../types';
 import { useSidebarDismiss } from './settingsSidebar/useSidebarDismiss';
 import ProviderSpecificSettings from './settingsSidebar/ProviderSpecificSettings';
 import VisionSettingsSection from './settingsSidebar/VisionSettingsSection';
 import CommonSettingsSection from './settingsSidebar/CommonSettingsSection';
 
-type SettingsUnion = DeepSeekSettings | DoubaoSettings | SiliconFlowSettings | CerebrasSettings | GroqSettings | GrokSettings | OpenRouterSettings | MistralSettings | GeminiSettings;
+type SettingsUnion = DeepSeekSettings | DoubaoSettings | DoubaoSeedreamSettings | SiliconFlowSettings | CerebrasSettings | GroqSettings | GrokSettings | OpenRouterSettings | MistralSettings | GeminiSettings;
 
 interface SettingsSidebarProps {
   isOpen: boolean;
@@ -39,6 +39,7 @@ const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
   const isOpenRouter = provider === 'openrouter';
   const isMistral = provider === 'mistral';
   const isGemini = provider === 'gemini';
+  const isSeedream = isDoubao && modelId.toLowerCase().includes('seedream');
 
   const handleChange = (field: string, value: unknown) => {
     onSettingsChange({
@@ -72,7 +73,9 @@ const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
       </div>
 
       <div className="settings-content" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-        {isDeepSeek || isDoubao || isSiliconFlow || isCerebras || isGroq || isGrok || isOpenRouter || isMistral || isGemini ? (
+        {isSeedream ? (
+          <ProviderSpecificSettings provider={provider} modelId={modelId} settings={settings} handleChange={handleChange} />
+        ) : isDeepSeek || isDoubao || isSiliconFlow || isCerebras || isGroq || isGrok || isOpenRouter || isMistral || isGemini ? (
           <>
             <ProviderSpecificSettings provider={provider} modelId={modelId} settings={settings} handleChange={handleChange} />
 

@@ -139,6 +139,13 @@ class ChatRequest(BaseModel):
     # Mistral specific
     safe_prompt: Optional[bool] = None
     random_seed: Optional[int] = None
+    # Doubao Seedream specific
+    sequential_image_generation: Optional[str] = None
+    max_images: Optional[int] = None
+    watermark: Optional[bool] = None
+    prompt_optimize_mode: Optional[str] = None
+    size: Optional[str] = None
+    seed: Optional[int] = None
 
 
 class ChatResponse(BaseModel):

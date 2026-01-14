@@ -195,16 +195,50 @@ async def chat_completion(
                     provider_kwargs["safe_prompt"] = chat_request.safe_prompt
                 if chat_request.random_seed is not None:
                     provider_kwargs["random_seed"] = chat_request.random_seed
+                # Doubao Seedream specific
+                if chat_request.sequential_image_generation is not None:
+                    provider_kwargs["sequential_image_generation"] = chat_request.sequential_image_generation
+                if chat_request.max_images is not None:
+                    provider_kwargs["max_images"] = chat_request.max_images
+                if chat_request.watermark is not None:
+                    provider_kwargs["watermark"] = chat_request.watermark
+                if chat_request.prompt_optimize_mode is not None:
+                    provider_kwargs["prompt_optimize_mode"] = chat_request.prompt_optimize_mode
+                if chat_request.size is not None:
+                    provider_kwargs["size"] = chat_request.size
+                if chat_request.seed is not None:
+                    provider_kwargs["seed"] = chat_request.seed
                 if chat_request.image_detail is not None:
                     provider_kwargs["image_detail"] = chat_request.image_detail
                 if chat_request.image_pixel_limit is not None:
-                    provider_kwargs["image_pixel_limit"] = chat_request.image_pixel_limit.model_dump(exclude_none=True)
+                    # In some Pydantic versions/configs, nested models might already be dicts here if bypass validation occurred
+                    # or if they are plain dicts from the request.
+                    limit = chat_request.image_pixel_limit
+                    if isinstance(limit, dict):
+                        provider_kwargs["image_pixel_limit"] = {k: v for k, v in limit.items() if v is not None}
+                    elif hasattr(limit, "model_dump"):
+                        provider_kwargs["image_pixel_limit"] = limit.model_dump(exclude_none=True)
+                    elif hasattr(limit, "dict"):
+                        provider_kwargs["image_pixel_limit"] = limit.dict(exclude_none=True)
+                    else:
+                        provider_kwargs["image_pixel_limit"] = limit
                 if chat_request.fps is not None:
                     provider_kwargs["fps"] = chat_request.fps
                 if chat_request.video_detail is not None:
                     provider_kwargs["video_detail"] = chat_request.video_detail
                 if chat_request.max_frames is not None:
                     provider_kwargs["max_frames"] = chat_request.max_frames
+
+                if "seedream" in model_id.lower():
+                    # For Seedream, we use the custom image generation handler
+                    # We can use the provider_client directly here since it's correctly instantiated
+                    async for chunk in provider_client.stream_chat(
+                        model=model_id,
+                        messages=api_messages,
+                        **provider_kwargs,
+                    ):
+                        yield chunk
+                    return
 
                 stream = provider_client.stream_chat(
                     model=model_id,
@@ -329,10 +363,32 @@ async def chat_completion(
             provider_kwargs["safe_prompt"] = chat_request.safe_prompt
         if chat_request.random_seed is not None:
             provider_kwargs["random_seed"] = chat_request.random_seed
+        
+        # Doubao Seedream specific
+        if chat_request.sequential_image_generation is not None:
+            provider_kwargs["sequential_image_generation"] = chat_request.sequential_image_generation
+        if chat_request.max_images is not None:
+            provider_kwargs["max_images"] = chat_request.max_images
+        if chat_request.watermark is not None:
+            provider_kwargs["watermark"] = chat_request.watermark
+        if chat_request.prompt_optimize_mode is not None:
+            provider_kwargs["prompt_optimize_mode"] = chat_request.prompt_optimize_mode
+        if chat_request.size is not None:
+            provider_kwargs["size"] = chat_request.size
+        if chat_request.seed is not None:
+            provider_kwargs["seed"] = chat_request.seed
         if chat_request.image_detail is not None:
             provider_kwargs["image_detail"] = chat_request.image_detail
         if chat_request.image_pixel_limit is not None:
-            provider_kwargs["image_pixel_limit"] = chat_request.image_pixel_limit.model_dump(exclude_none=True)
+            limit = chat_request.image_pixel_limit
+            if isinstance(limit, dict):
+                provider_kwargs["image_pixel_limit"] = {k: v for k, v in limit.items() if v is not None}
+            elif hasattr(limit, "model_dump"):
+                provider_kwargs["image_pixel_limit"] = limit.model_dump(exclude_none=True)
+            elif hasattr(limit, "dict"):
+                provider_kwargs["image_pixel_limit"] = limit.dict(exclude_none=True)
+            else:
+                provider_kwargs["image_pixel_limit"] = limit
         if chat_request.fps is not None:
             provider_kwargs["fps"] = chat_request.fps
         if chat_request.video_detail is not None:
@@ -340,6 +396,7 @@ async def chat_completion(
         if chat_request.max_frames is not None:
             provider_kwargs["max_frames"] = chat_request.max_frames
 
+        # Handle Seedream non-streaming if needed (though UI usually uses stream)
         response_content, reasoning_content = await provider_client.chat(
             model=model_id,
             messages=api_messages,

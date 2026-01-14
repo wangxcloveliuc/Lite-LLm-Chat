@@ -14,6 +14,8 @@ class DoubaoProvider(BaseLLMProvider):
 
     async def list_models(self) -> List[Dict[str, object]]:
         model_ids = [
+            "doubao-seedream-4-5-251128",
+            "doubao-seedream-4-0-250828",
             "doubao-1-5-vision-pro-32k-250115",
             "doubao-1-5-lite-32k-250115",
             "doubao-1-5-pro-32k-250115",
@@ -36,7 +38,9 @@ class DoubaoProvider(BaseLLMProvider):
             name = self._format_model_name(model_id)
             
             # Determine description based on model type
-            if "vision" in model_id.lower():
+            if "seedream" in model_id.lower():
+                desc_type = "image generation model"
+            elif "vision" in model_id.lower():
                 desc_type = "vision model"
             elif any(x in model_id.lower() for x in ["r1", "thinking", "seed"]):
                 desc_type = "reasoning model"

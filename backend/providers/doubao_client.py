@@ -4,6 +4,7 @@ import mimetypes
 import os
 from typing import AsyncIterator, Dict, List, Optional, Tuple
 
+from pydantic import BaseModel
 from volcenginesdkarkruntime import Ark
 
 from .base import BaseClient
@@ -12,6 +13,14 @@ try:
     from ..config import settings
 except (ImportError, ValueError):
     from config import settings
+
+
+class _SeedreamSequentialImageGenerationOptions(BaseModel):
+    max_images: Optional[int] = None
+
+
+class _SeedreamOptimizePromptOptions(BaseModel):
+    mode: Optional[str] = None
 
 
 class DoubaoClient(BaseClient):
@@ -109,6 +118,81 @@ class DoubaoClient(BaseClient):
                 new_messages.append(msg)
         return new_messages
 
+    def _is_seedream(self, model: str) -> bool:
+        """Check if the model is a Seedream image generation model."""
+        return "seedream" in model.lower()
+
+    async def _handle_seedream(
+        self,
+        model: str,
+        messages: List[Dict],
+        **kwargs
+    ) -> Tuple[str, str]:
+        """Handle non-streaming image generation for Seedream models."""
+        # Extract prompt and reference images from messages
+        prompt = ""
+        images = []
+        for msg in reversed(messages):
+            if msg.get("role") == "user":
+                content = msg.get("content")
+                if isinstance(content, str):
+                    prompt = content
+                elif isinstance(content, list):
+                    for part in content:
+                        if part.get("type") == "text":
+                            prompt = part.get("text", "")
+                        elif part.get("type") == "image_url":
+                            url = part.get("image_url", {}).get("url")
+                            if url:
+                                images.append(url)
+                if prompt:
+                    break
+
+        # Process parameters
+        size = kwargs.pop("size", "2048x2048")
+        seed = kwargs.pop("seed", None)
+        sequential_image_generation = kwargs.pop("sequential_image_generation", "disabled")
+        max_images = kwargs.pop("max_images", 15)
+        watermark = kwargs.pop("watermark", True)
+        prompt_optimize_mode = kwargs.pop("prompt_optimize_mode", "standard")
+        
+        # Prepare request body
+        request_params = {
+            "model": model,
+            "prompt": prompt,
+            "size": size,
+            "watermark": watermark,
+        }
+        if images:
+            request_params["image"] = images
+        if seed is not None and seed != -1:
+            request_params["seed"] = seed
+        if sequential_image_generation == "auto":
+            request_params["sequential_image_generation"] = "auto"
+            request_params["sequential_image_generation_options"] = _SeedreamSequentialImageGenerationOptions(
+                max_images=max_images
+            )
+        if prompt_optimize_mode:
+            request_params["optimize_prompt_options"] = _SeedreamOptimizePromptOptions(mode=prompt_optimize_mode)
+
+        try:
+            # Use generate or completions depending on SDK
+            # Based on our check, client.images.generate exists
+            print("request_params", request_params)
+            response = self.client.images.generate(**request_params)
+            print("response", response)
+            
+            content_parts = []
+            if hasattr(response, "data"):
+                for img in response.data:
+                    url = img.get("url", "") if isinstance(img, dict) else getattr(img, "url", "")
+                    if url:
+                        content_parts.append(f"![image]({url})")
+            
+            return "\n\n".join(content_parts), ""
+        except Exception as e:
+            raise Exception(f"Seedream API error: {str(e)}")
+
     async def chat(
         self,
         model: str,
@@ -117,6 +201,9 @@ class DoubaoClient(BaseClient):
         max_tokens: Optional[int] = None,
         **kwargs,
     ) -> Tuple[str, str]:
+        if self._is_seedream(model):
+            return await self._handle_seedream(model, messages, **kwargs)
+
         try:
             extra_body = kwargs.pop("extra_body", {}) or {}
             thinking = kwargs.pop("thinking", None)
@@ -168,6 +255,7 @@ class DoubaoClient(BaseClient):
         except Exception as e:
             raise Exception(f"API error: {str(e)}")
 
+
     async def stream_chat(
         self,
         model: str,
@@ -176,6 +264,17 @@ class DoubaoClient(BaseClient):
         max_tokens: Optional[int] = None,
         **kwargs,
     ) -> AsyncIterator[str]:
+        if self._is_seedream(model):
+            try:
+                content, _reasoning = await self._handle_seedream(model, messages, **kwargs)
+                if content:
+                    yield f"data: {json.dumps({'content': content})}\n\n"
+                yield f"data: {json.dumps({'done': True})}\n\n"
+            except Exception as e:
+                error_msg = f"Error: {str(e)}"
+                yield f"data: {json.dumps({'error': error_msg})}\n\n"
+            return
+
         try:
             extra_body = kwargs.pop("extra_body", {}) or {}
             thinking = kwargs.pop("thinking", None)
