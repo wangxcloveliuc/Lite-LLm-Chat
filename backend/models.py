@@ -146,6 +146,13 @@ class ChatRequest(BaseModel):
     prompt_optimize_mode: Optional[str] = None
     size: Optional[str] = None
     seed: Optional[int] = None
+    # Doubao Seedance specific
+    resolution: Optional[str] = None
+    ratio: Optional[str] = None
+    duration: Optional[int] = None
+    generate_audio: Optional[bool] = None
+    draft: Optional[bool] = None
+    camera_fixed: Optional[bool] = None
 
 
 class ChatResponse(BaseModel):

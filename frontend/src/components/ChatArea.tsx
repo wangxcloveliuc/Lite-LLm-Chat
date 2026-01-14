@@ -183,6 +183,17 @@ function ChatMessage({
                   );
                 },
                 img({ src, alt }) {
+                  const isVideo = src?.toLowerCase().endsWith('.mp4') || alt === 'video';
+                  if (isVideo && src) {
+                    return (
+                      <video 
+                        src={getFullImageUrl(src)} 
+                        controls 
+                        className="message-markdown-video"
+                        style={{ maxWidth: '100%', borderRadius: '8px', margin: '8px 0', display: 'block' }}
+                      />
+                    );
+                  }
                   return (
                     <img 
                       src={src ? getFullImageUrl(src) : ''} 

@@ -57,6 +57,16 @@ function App() {
     watermark: true,
     prompt_optimize_mode: 'standard',
   });
+  const [doubaoSeedanceSettings, setDoubaoSeedanceSettings] = useState<DoubaoSeedanceSettings>({
+    resolution: '720p',
+    ratio: '16:9',
+    duration: 5,
+    watermark: false,
+    generate_audio: true,
+    draft: false,
+    seed: undefined,
+    camera_fixed: false,
+  });
   const [siliconflowSettings, setSiliconflowSettings] = useState<SiliconFlowSettings>({
     frequency_penalty: 0,
     max_tokens: undefined,
@@ -186,6 +196,13 @@ function App() {
     watermark?: boolean;
     prompt_optimize_mode?: string;
     size?: string;
+    // Doubao Seedance specific
+    resolution?: string;
+    ratio?: string;
+    duration?: number;
+    generate_audio?: boolean;
+    draft?: boolean;
+    camera_fixed?: boolean;
   };
 
   const loadProviders = useCallback(async () => {
@@ -294,9 +311,12 @@ function App() {
     // Gather settings based on provider
     let currentSettings: ChatRequestSettings = {};
     const isSeedream = selectedProvider === 'doubao' && selectedModel.toLowerCase().includes('seedream');
+    const isSeedance = selectedProvider === 'doubao' && selectedModel.toLowerCase().includes('seedance');
 
     if (isSeedream) {
       currentSettings = { ...doubaoSeedreamSettings } as any;
+    } else if (isSeedance) {
+      currentSettings = { ...doubaoSeedanceSettings } as any;
     } else if (selectedProvider === 'doubao') {
       currentSettings = {
         ...doubaoSettings,
@@ -398,6 +418,13 @@ function App() {
         watermark: (currentSettings as any).watermark,
         prompt_optimize_mode: (currentSettings as any).prompt_optimize_mode,
         size: (currentSettings as any).size,
+        // Doubao Seedance specific
+        resolution: (currentSettings as any).resolution,
+        ratio: (currentSettings as any).ratio,
+        duration: (currentSettings as any).duration,
+        generate_audio: (currentSettings as any).generate_audio,
+        draft: (currentSettings as any).draft,
+        camera_fixed: (currentSettings as any).camera_fixed,
       };
 
       for await (const chunk of apiClient.chatStream(request, controller.signal)) {
@@ -588,6 +615,7 @@ function App() {
         modelId={selectedModel}
         settings={
           (selectedProvider === 'doubao' && selectedModel.toLowerCase().includes('seedream')) ? doubaoSeedreamSettings :
+          (selectedProvider === 'doubao' && selectedModel.toLowerCase().includes('seedance')) ? doubaoSeedanceSettings :
           selectedProvider === 'doubao' ? doubaoSettings : 
           selectedProvider === 'siliconflow' ? siliconflowSettings : 
           selectedProvider === 'cerebras' ? cerebrasSettings : 
@@ -601,6 +629,8 @@ function App() {
         onSettingsChange={(newSettings) => {
           if (selectedProvider === 'doubao' && selectedModel.toLowerCase().includes('seedream')) {
             setDoubaoSeedreamSettings(newSettings as DoubaoSeedreamSettings);
+          } else if (selectedProvider === 'doubao' && selectedModel.toLowerCase().includes('seedance')) {
+            setDoubaoSeedanceSettings(newSettings as DoubaoSeedanceSettings);
           } else if (selectedProvider === 'doubao') {
             setDoubaoSettings(newSettings as DoubaoSettings);
           } else if (selectedProvider === 'siliconflow') {

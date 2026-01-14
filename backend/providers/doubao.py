@@ -14,8 +14,6 @@ class DoubaoProvider(BaseLLMProvider):
 
     async def list_models(self) -> List[Dict[str, object]]:
         model_ids = [
-            "doubao-seedream-4-5-251128",
-            "doubao-seedream-4-0-250828",
             "doubao-1-5-vision-pro-32k-250115",
             "doubao-1-5-lite-32k-250115",
             "doubao-1-5-pro-32k-250115",
@@ -30,6 +28,13 @@ class DoubaoProvider(BaseLLMProvider):
             "deepseek-v3-2-251201",
             "kimi-k2-thinking-251104",
             "glm-4-7-251222",
+            "doubao-seedream-4-5-251128",
+            "doubao-seedream-4-0-250828",
+            "doubao-seedance-1-5-pro-251215",
+            "doubao-seedance-1-0-pro-250528",
+            "doubao-seedance-1-0-pro-fast-251015",
+            "doubao-seedance-1-0-lite-i2v-250428",
+            "doubao-seedance-1-0-lite-t2v-250428",
         ]
         
         models = []

@@ -40,6 +40,7 @@ const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
   const isMistral = provider === 'mistral';
   const isGemini = provider === 'gemini';
   const isSeedream = isDoubao && modelId.toLowerCase().includes('seedream');
+  const isSeedance = isDoubao && modelId.toLowerCase().includes('seedance');
 
   const handleChange = (field: string, value: unknown) => {
     onSettingsChange({
@@ -73,7 +74,7 @@ const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
       </div>
 
       <div className="settings-content" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-        {isSeedream ? (
+        {isSeedream || isSeedance ? (
           <ProviderSpecificSettings provider={provider} modelId={modelId} settings={settings} handleChange={handleChange} />
         ) : isDeepSeek || isDoubao || isSiliconFlow || isCerebras || isGroq || isGrok || isOpenRouter || isMistral || isGemini ? (
           <>

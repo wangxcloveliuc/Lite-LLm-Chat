@@ -70,6 +70,17 @@ export interface DoubaoSeedreamSettings {
   prompt_optimize_mode: 'standard' | 'fast';
 }
 
+export interface DoubaoSeedanceSettings {
+  resolution: '480p' | '720p' | '1080p';
+  ratio: '16:9' | '4:3' | '1:1' | '3:4' | '9:16' | '21:9' | 'adaptive';
+  duration: number;
+  watermark: boolean;
+  generate_audio: boolean;
+  draft: boolean;
+  seed?: number;
+  camera_fixed: boolean;
+}
+
 export interface SiliconFlowSettings extends DeepSeekSettings {
   enable_thinking?: boolean;
   thinking_budget?: number;
@@ -174,6 +185,13 @@ export interface ChatRequest {
   watermark?: boolean;
   prompt_optimize_mode?: string;
   size?: string;
+  // Doubao Seedance specific
+  resolution?: string;
+  ratio?: string;
+  duration?: number;
+  generate_audio?: boolean;
+  draft?: boolean;
+  camera_fixed?: boolean;
 }
 
 export interface StreamChunk {

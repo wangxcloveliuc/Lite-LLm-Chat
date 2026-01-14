@@ -263,6 +263,20 @@ async def chat_completion(
                     provider_kwargs["video_detail"] = chat_request.video_detail
                 if chat_request.max_frames is not None:
                     provider_kwargs["max_frames"] = chat_request.max_frames
+                
+                # Doubao Seedance specific
+                if chat_request.resolution is not None:
+                    provider_kwargs["resolution"] = chat_request.resolution
+                if chat_request.ratio is not None:
+                    provider_kwargs["ratio"] = chat_request.ratio
+                if chat_request.duration is not None:
+                    provider_kwargs["duration"] = chat_request.duration
+                if chat_request.generate_audio is not None:
+                    provider_kwargs["generate_audio"] = chat_request.generate_audio
+                if chat_request.draft is not None:
+                    provider_kwargs["draft"] = chat_request.draft
+                if chat_request.camera_fixed is not None:
+                    provider_kwargs["camera_fixed"] = chat_request.camera_fixed
 
                 stream = provider_client.stream_chat(
                     model=model_id,
@@ -453,6 +467,20 @@ async def chat_completion(
             provider_kwargs["video_detail"] = chat_request.video_detail
         if chat_request.max_frames is not None:
             provider_kwargs["max_frames"] = chat_request.max_frames
+        
+        # Doubao Seedance specific
+        if chat_request.resolution is not None:
+            provider_kwargs["resolution"] = chat_request.resolution
+        if chat_request.ratio is not None:
+            provider_kwargs["ratio"] = chat_request.ratio
+        if chat_request.duration is not None:
+            provider_kwargs["duration"] = chat_request.duration
+        if chat_request.generate_audio is not None:
+            provider_kwargs["generate_audio"] = chat_request.generate_audio
+        if chat_request.draft is not None:
+            provider_kwargs["draft"] = chat_request.draft
+        if chat_request.camera_fixed is not None:
+            provider_kwargs["camera_fixed"] = chat_request.camera_fixed
 
         # Handle Seedream non-streaming if needed (though UI usually uses stream)
         response_content, reasoning_content = await provider_client.chat(
