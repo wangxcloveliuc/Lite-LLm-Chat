@@ -186,7 +186,6 @@ function App() {
     watermark?: boolean;
     prompt_optimize_mode?: string;
     size?: string;
-    seed?: number;
   };
 
   const loadProviders = useCallback(async () => {

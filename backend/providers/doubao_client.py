@@ -178,19 +178,29 @@ class DoubaoClient(BaseClient):
         try:
             # Use generate or completions depending on SDK
             # Based on our check, client.images.generate exists
-            print("request_params", request_params)
+            print(f"[DoubaoArk] Seedream Request: {request_params}")
             response = self.client.images.generate(**request_params)
-            print("response", response)
+            print(f"[DoubaoArk] Seedream Response: {response}")
             
             content_parts = []
-            if hasattr(response, "data"):
+            if hasattr(response, "data") and response.data:
                 for img in response.data:
-                    url = img.get("url", "") if isinstance(img, dict) else getattr(img, "url", "")
+                    url = ""
+                    if isinstance(img, dict):
+                        url = img.get("url", "")
+                    else:
+                        # Try attribute access for Pydantic models/objects
+                        url = getattr(img, "url", "")
+                    
                     if url:
                         content_parts.append(f"![image]({url})")
             
+            if not content_parts:
+                print(f"[DoubaoArk] No images found in response data: {getattr(response, 'data', 'N/A')}")
+            
             return "\n\n".join(content_parts), ""
         except Exception as e:
+            print(f"[DoubaoArk] Seedream API error: {str(e)}")
             raise Exception(f"Seedream API error: {str(e)}")
 
     async def chat(

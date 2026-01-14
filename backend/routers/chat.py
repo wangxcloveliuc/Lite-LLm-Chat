@@ -229,17 +229,6 @@ async def chat_completion(
                 if chat_request.max_frames is not None:
                     provider_kwargs["max_frames"] = chat_request.max_frames
 
-                if "seedream" in model_id.lower():
-                    # For Seedream, we use the custom image generation handler
-                    # We can use the provider_client directly here since it's correctly instantiated
-                    async for chunk in provider_client.stream_chat(
-                        model=model_id,
-                        messages=api_messages,
-                        **provider_kwargs,
-                    ):
-                        yield chunk
-                    return
-
                 stream = provider_client.stream_chat(
                     model=model_id,
                     messages=api_messages,
