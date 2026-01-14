@@ -129,10 +129,12 @@ class DoubaoClient(BaseClient):
         **kwargs
     ) -> Tuple[str, str]:
         """Handle non-streaming image generation for Seedream models."""
+        processed_messages = self._process_messages(messages)
+        
         # Extract prompt and reference images from messages
         prompt = ""
         images = []
-        for msg in reversed(messages):
+        for msg in reversed(processed_messages):
             if msg.get("role") == "user":
                 content = msg.get("content")
                 if isinstance(content, str):
