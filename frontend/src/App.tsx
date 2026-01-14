@@ -4,7 +4,7 @@ import Header from './components/Header';
 import ChatArea from './components/ChatArea';
 import SettingsSidebar from './components/SettingsSidebar';
 import { apiClient } from './api/apiClient';
-import type { Provider, Model, Session, Message, DeepSeekSettings, DoubaoSettings, SiliconFlowSettings, CerebrasSettings, GroqSettings } from './types';
+import type { Provider, Model, Session, Message, DeepSeekSettings, DoubaoSettings, SiliconFlowSettings, CerebrasSettings, GroqSettings, MistralSettings } from './types';
 import './App.css';
 
 function App() {
@@ -89,6 +89,17 @@ function App() {
     include_reasoning: true,
     reasoning_effort: 'default',
     max_completion_tokens: undefined,
+  });
+  const [mistralSettings, setMistralSettings] = useState<MistralSettings>({
+    temperature: 0.7,
+    top_p: 1,
+    max_tokens: undefined,
+    safe_prompt: false,
+    random_seed: undefined,
+    stop: '',
+    system_prompt: '',
+    frequency_penalty: 0,
+    presence_penalty: 0,
   });
 
   useEffect(() => {
@@ -221,6 +232,11 @@ function App() {
         ...groqSettings,
         stop: groqSettings.stop ? groqSettings.stop.split(',').map((s: string) => s.trim()) : undefined,
       };
+    } else if (selectedProvider === 'mistral') {
+      currentSettings = {
+        ...mistralSettings,
+        stop: mistralSettings.stop ? mistralSettings.stop.split(',').map((s: string) => s.trim()) : undefined,
+      };
     } else {
       // Fallback to deepseek settings as default for other providers (common basic settings)
       currentSettings = {
@@ -250,6 +266,9 @@ function App() {
         fps: currentSettings.fps,
         video_detail: currentSettings.video_detail,
         max_frames: currentSettings.max_frames,
+        // Mistral-specific settings
+        safe_prompt: currentSettings.safe_prompt,
+        random_seed: currentSettings.random_seed,
         // Doubao-specific settings
         thinking: currentSettings.thinking,
         reasoning_effort: currentSettings.reasoning_effort,
@@ -449,7 +468,14 @@ function App() {
         onClose={() => setShowSettings(false)}
         provider={selectedProvider}
         modelId={selectedModel}
-        settings={selectedProvider === 'doubao' ? doubaoSettings : (selectedProvider === 'siliconflow' ? siliconflowSettings : (selectedProvider === 'cerebras' ? cerebrasSettings : (selectedProvider === 'groq' ? groqSettings : deepseekSettings)))}
+        settings={
+          selectedProvider === 'doubao' ? doubaoSettings : 
+          selectedProvider === 'siliconflow' ? siliconflowSettings : 
+          selectedProvider === 'cerebras' ? cerebrasSettings : 
+          selectedProvider === 'groq' ? groqSettings : 
+          selectedProvider === 'mistral' ? mistralSettings : 
+          deepseekSettings
+        }
         onSettingsChange={(newSettings) => {
           if (selectedProvider === 'doubao') {
             setDoubaoSettings(newSettings);
@@ -459,6 +485,8 @@ function App() {
             setCerebrasSettings(newSettings);
           } else if (selectedProvider === 'groq') {
             setGroqSettings(newSettings);
+          } else if (selectedProvider === 'mistral') {
+            setMistralSettings(newSettings);
           } else {
             setDeepseekSettings(newSettings);
           }

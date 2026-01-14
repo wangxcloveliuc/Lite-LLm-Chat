@@ -85,6 +85,18 @@ export interface GroqSettings extends DeepSeekSettings {
   max_completion_tokens?: number;
 }
 
+export interface MistralSettings {
+  temperature: number;
+  top_p: number;
+  max_tokens?: number;
+  safe_prompt: boolean;
+  random_seed?: number;
+  stop: string;
+  system_prompt: string;
+  frequency_penalty: number;
+  presence_penalty: number;
+}
+
 export interface ChatRequest {
   provider: string;
   model: string;
@@ -120,6 +132,9 @@ export interface ChatRequest {
   fps?: number;
   video_detail?: string;
   max_frames?: number;
+  // Mistral-specific settings
+  safe_prompt?: boolean;
+  random_seed?: number;
 }
 
 export interface StreamChunk {

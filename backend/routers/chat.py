@@ -191,6 +191,10 @@ async def chat_completion(
                     provider_kwargs["min_p"] = chat_request.min_p
                 if chat_request.top_k is not None:
                     provider_kwargs["top_k"] = chat_request.top_k
+                if chat_request.safe_prompt is not None:
+                    provider_kwargs["safe_prompt"] = chat_request.safe_prompt
+                if chat_request.random_seed is not None:
+                    provider_kwargs["random_seed"] = chat_request.random_seed
                 if chat_request.image_detail is not None:
                     provider_kwargs["image_detail"] = chat_request.image_detail
                 if chat_request.image_pixel_limit is not None:
@@ -321,6 +325,10 @@ async def chat_completion(
             provider_kwargs["min_p"] = chat_request.min_p
         if chat_request.top_k is not None:
             provider_kwargs["top_k"] = chat_request.top_k
+        if chat_request.safe_prompt is not None:
+            provider_kwargs["safe_prompt"] = chat_request.safe_prompt
+        if chat_request.random_seed is not None:
+            provider_kwargs["random_seed"] = chat_request.random_seed
         if chat_request.image_detail is not None:
             provider_kwargs["image_detail"] = chat_request.image_detail
         if chat_request.image_pixel_limit is not None:

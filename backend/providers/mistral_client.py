@@ -42,13 +42,58 @@ class MistralClient(OpenAICompatibleClient):
 
         return "".join(reasoning_parts), "".join(text_parts)
 
-    async def chat(self, model: str, *args, **kwargs) -> Tuple[str, str]:
+    def _sanitize_mistral_kwargs(self, kwargs: Dict) -> Tuple[Dict, Dict, Dict]:
+        """Sanitize kwargs for Mistral and extract vision/extra params."""
+        sanitized = kwargs.copy()
+        
+        # Extract vision params for processing
+        vision_params = {
+            "image_detail": sanitized.pop("image_detail", None),
+            "image_pixel_limit": sanitized.pop("image_pixel_limit", None),
+            "fps": sanitized.pop("fps", None),
+            "video_detail": sanitized.pop("video_detail", None),
+            "max_frames": sanitized.pop("max_frames", None),
+        }
+        
+        # Remove unsupported extended settings
+        extended_keys = [
+            "thinking", "reasoning_effort", "disable_reasoning", "reasoning_format", 
+            "include_reasoning", "max_completion_tokens", "enable_thinking", 
+            "thinking_budget", "min_p", "top_k"
+        ]
+        for key in extended_keys:
+            sanitized.pop(key, None)
+            
+        # Mistral specific extras
+        extra_body = {}
+        if "safe_prompt" in sanitized:
+            extra_body["safe_prompt"] = sanitized.pop("safe_prompt")
+        
+        if "random_seed" in sanitized:
+            # OpenAI generic seed param
+            sanitized["seed"] = sanitized.pop("random_seed")
+
+        # Remove None values strictly as Mistral API is sensitive to null/None for some fields like 'stop'
+        sanitized = {k: v for k, v in sanitized.items() if v is not None}
+
+        return sanitized, vision_params, extra_body
+
+    async def chat(self, model: str, messages: List[Dict], **kwargs) -> Tuple[str, str]:
         # Mistral might return reasoning in structured content instead of reasoning_content field
+        sanitized_kwargs, vision_params, extra_body = self._sanitize_mistral_kwargs(kwargs)
+        
+        processed_messages = self._process_messages(
+            messages,
+            **vision_params
+        )
+        
         try:
             response = self.client.chat.completions.create(
                 model=model,
+                messages=processed_messages,
                 stream=False,
-                *args, **kwargs
+                extra_body=extra_body or None,
+                **sanitized_kwargs
             )
             message_content = response.choices[0].message.content
             reasoning, text = self._extract_reasoning_and_text(message_content)
@@ -61,14 +106,23 @@ class MistralClient(OpenAICompatibleClient):
         except Exception as e:
             raise Exception(f"Mistral API error: {str(e)}")
 
-    async def stream_chat(self, model: str, *args, **kwargs):
+    async def stream_chat(self, model: str, messages: List[Dict], **kwargs):
         # Override to use Mistral-specific extraction
         import json
+        sanitized_kwargs, vision_params, extra_body = self._sanitize_mistral_kwargs(kwargs)
+        
+        processed_messages = self._process_messages(
+            messages,
+            **vision_params
+        )
+
         try:
             response = self.client.chat.completions.create(
                 model=model,
+                messages=processed_messages,
                 stream=True,
-                *args, **kwargs
+                extra_body=extra_body or None,
+                **sanitized_kwargs
             )
 
             for chunk in response:

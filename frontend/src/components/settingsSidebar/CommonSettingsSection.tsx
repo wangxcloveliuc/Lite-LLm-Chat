@@ -5,9 +5,10 @@ import type {
   SiliconFlowSettings,
   CerebrasSettings,
   GroqSettings,
+  MistralSettings,
 } from '../../types';
 
-type SettingsUnion = DeepSeekSettings | DoubaoSettings | SiliconFlowSettings | CerebrasSettings | GroqSettings;
+type SettingsUnion = DeepSeekSettings | DoubaoSettings | SiliconFlowSettings | CerebrasSettings | GroqSettings | MistralSettings;
 
 type HandleChange = (field: string, value: unknown) => void;
 

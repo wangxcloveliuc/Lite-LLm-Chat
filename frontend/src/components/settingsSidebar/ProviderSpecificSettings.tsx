@@ -5,9 +5,10 @@ import type {
   SiliconFlowSettings,
   CerebrasSettings,
   GroqSettings,
+  MistralSettings,
 } from '../../types';
 
-type SettingsUnion = DeepSeekSettings | DoubaoSettings | SiliconFlowSettings | CerebrasSettings | GroqSettings;
+type SettingsUnion = DeepSeekSettings | DoubaoSettings | SiliconFlowSettings | CerebrasSettings | GroqSettings | MistralSettings;
 
 type HandleChange = (field: string, value: unknown) => void;
 
@@ -28,16 +29,58 @@ const ProviderSpecificSettings: React.FC<ProviderSpecificSettingsProps> = ({
   const isSiliconFlow = provider === 'siliconflow';
   const isCerebras = provider === 'cerebras';
   const isGroq = provider === 'groq';
+  const isMistral = provider === 'mistral';
 
   const doubaoSettings = settings as DoubaoSettings;
   const siliconflowSettings = settings as SiliconFlowSettings;
   const cerebrasSettings = settings as CerebrasSettings;
   const groqSettings = settings as GroqSettings;
+  const mistralSettings = settings as MistralSettings;
 
-  if (!isDoubao && !isSiliconFlow && !isCerebras && !isGroq) return null;
+  if (!isDoubao && !isSiliconFlow && !isCerebras && !isGroq && !isMistral) return null;
 
   return (
     <>
+      {isMistral && (
+        <>
+          <div className="setting-group">
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <label style={{ fontSize: '14px', fontWeight: '500', cursor: 'pointer' }}>
+                Safe Prompt
+              </label>
+              <input
+                type="checkbox"
+                checked={mistralSettings.safe_prompt || false}
+                onChange={(e) => handleChange('safe_prompt', e.target.checked)}
+                style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+              />
+            </div>
+            <p style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+              Inject a safety prompt before the conversation.
+            </p>
+          </div>
+
+          <div className="setting-group">
+            <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>
+              Random Seed
+            </label>
+            <input
+              type="number"
+              placeholder="None"
+              value={mistralSettings.random_seed !== undefined ? mistralSettings.random_seed : ''}
+              onChange={(e) => {
+                const val = e.target.value === '' ? undefined : parseInt(e.target.value);
+                handleChange('random_seed', val);
+              }}
+              style={{ width: '100%', padding: '8px', border: '1px solid #E5E7EB', borderRadius: '4px' }}
+            />
+            <p style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+              Set a seed for deterministic results.
+            </p>
+          </div>
+        </>
+      )}
+
       {isDoubao && (
         <>
           <div className="setting-group">

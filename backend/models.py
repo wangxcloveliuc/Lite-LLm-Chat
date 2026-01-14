@@ -136,6 +136,9 @@ class ChatRequest(BaseModel):
     thinking_budget: Optional[int] = Field(default=None, ge=128, le=32768)
     min_p: Optional[float] = Field(default=None, ge=0.0, le=1.0)
     top_k: Optional[float] = Field(default=None)
+    # Mistral specific
+    safe_prompt: Optional[bool] = None
+    random_seed: Optional[int] = None
 
 
 class ChatResponse(BaseModel):
