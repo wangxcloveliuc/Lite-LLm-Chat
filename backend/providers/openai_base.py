@@ -193,6 +193,21 @@ class OpenAICompatibleClient(BaseClient):
             for key in extended_keys:
                 sanitized_kwargs.pop(key, None)
 
+            # Fix for reasoning models that don't support certain parameters
+            # e.g. grok-4-fast-reasoning, o1-preview, etc.
+            is_reasoning_model = any(slug in model.lower() for slug in ["reasoning", "o1-", "o3-"])
+            
+            if is_reasoning_model:
+                sanitized_kwargs.pop("presence_penalty", None)
+                sanitized_kwargs.pop("frequency_penalty", None)
+                # Some reasoning models don't support temperature=1, they require exactly 1 or omit
+                # But let's stay focused on the presence_penalty first
+            else:
+                if sanitized_kwargs.get("presence_penalty") == 0:
+                    sanitized_kwargs.pop("presence_penalty", None)
+                if sanitized_kwargs.get("frequency_penalty") == 0:
+                    sanitized_kwargs.pop("frequency_penalty", None)
+
             processed_messages = self._process_messages(
                 messages, 
                 image_detail=image_detail, 
@@ -245,6 +260,18 @@ class OpenAICompatibleClient(BaseClient):
             ]
             for key in extended_keys:
                 sanitized_kwargs.pop(key, None)
+
+            # Fix for reasoning models that don't support certain parameters
+            is_reasoning_model = any(slug in model.lower() for slug in ["reasoning", "o1-", "o3-"])
+            
+            if is_reasoning_model:
+                sanitized_kwargs.pop("presence_penalty", None)
+                sanitized_kwargs.pop("frequency_penalty", None)
+            else:
+                if sanitized_kwargs.get("presence_penalty") == 0:
+                    sanitized_kwargs.pop("presence_penalty", None)
+                if sanitized_kwargs.get("frequency_penalty") == 0:
+                    sanitized_kwargs.pop("frequency_penalty", None)
 
             processed_messages = self._process_messages(
                 messages, 

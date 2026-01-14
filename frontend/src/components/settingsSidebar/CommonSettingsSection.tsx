@@ -5,10 +5,11 @@ import type {
   SiliconFlowSettings,
   CerebrasSettings,
   GroqSettings,
+  GrokSettings,
   MistralSettings,
 } from '../../types';
 
-type SettingsUnion = DeepSeekSettings | DoubaoSettings | SiliconFlowSettings | CerebrasSettings | GroqSettings | MistralSettings;
+type SettingsUnion = DeepSeekSettings | DoubaoSettings | SiliconFlowSettings | CerebrasSettings | GroqSettings | GrokSettings | MistralSettings;
 
 type HandleChange = (field: string, value: unknown) => void;
 
@@ -16,6 +17,7 @@ interface CommonSettingsSectionProps {
   settings: SettingsUnion;
   deepseekSettings: DeepSeekSettings;
   isCerebras: boolean;
+  modelId: string;
   handleChange: HandleChange;
 }
 
@@ -23,8 +25,13 @@ const CommonSettingsSection: React.FC<CommonSettingsSectionProps> = ({
   settings,
   deepseekSettings,
   isCerebras,
+  modelId,
   handleChange,
 }) => {
+  const isReasoningModel = modelId.toLowerCase().includes('reasoning') || 
+                           modelId.toLowerCase().startsWith('o1-') || 
+                           modelId.toLowerCase().startsWith('o3-');
+
   return (
     <>
       <div className="setting-group">
@@ -96,7 +103,7 @@ const CommonSettingsSection: React.FC<CommonSettingsSectionProps> = ({
         </p>
       </div>
 
-      {!isCerebras && (
+      {!isCerebras && !isReasoningModel && (
         <>
           <div className="setting-group">
             <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>
@@ -134,6 +141,14 @@ const CommonSettingsSection: React.FC<CommonSettingsSectionProps> = ({
             </p>
           </div>
         </>
+      )}
+
+      {isReasoningModel && (
+        <div style={{ padding: '8px', backgroundColor: '#FEF2F2', borderRadius: '4px', border: '1px solid #FEE2E2', marginBottom: '16px' }}>
+          <p style={{ fontSize: '12px', color: '#991B1B' }}>
+            Note: Frequency and Presence penalties are typically not supported by reasoning models.
+          </p>
+        </div>
       )}
 
       <div className="setting-group">

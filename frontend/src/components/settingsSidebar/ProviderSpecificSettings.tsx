@@ -5,10 +5,11 @@ import type {
   SiliconFlowSettings,
   CerebrasSettings,
   GroqSettings,
+  GrokSettings,
   MistralSettings,
 } from '../../types';
 
-type SettingsUnion = DeepSeekSettings | DoubaoSettings | SiliconFlowSettings | CerebrasSettings | GroqSettings | MistralSettings;
+type SettingsUnion = DeepSeekSettings | DoubaoSettings | SiliconFlowSettings | CerebrasSettings | GroqSettings | GrokSettings | MistralSettings;
 
 type HandleChange = (field: string, value: unknown) => void;
 
@@ -29,6 +30,7 @@ const ProviderSpecificSettings: React.FC<ProviderSpecificSettingsProps> = ({
   const isSiliconFlow = provider === 'siliconflow';
   const isCerebras = provider === 'cerebras';
   const isGroq = provider === 'groq';
+  const isGrok = provider === 'grok';
   const isMistral = provider === 'mistral';
 
   const doubaoSettings = settings as DoubaoSettings;
@@ -37,10 +39,18 @@ const ProviderSpecificSettings: React.FC<ProviderSpecificSettingsProps> = ({
   const groqSettings = settings as GroqSettings;
   const mistralSettings = settings as MistralSettings;
 
-  if (!isDoubao && !isSiliconFlow && !isCerebras && !isGroq && !isMistral) return null;
+  if (!isDoubao && !isSiliconFlow && !isCerebras && !isGroq && !isGrok && !isMistral) return null;
 
   return (
     <>
+      {isGrok && (
+        <div className="setting-group">
+          <p style={{ fontSize: '13px', color: '#6B7280', fontStyle: 'italic' }}>
+            Grok models utilize standard OpenAI-compatible parameters. Specific models like <strong>grok-4-fast-reasoning</strong> may ignore or reject certain parameters like presence_penalty.
+          </p>
+        </div>
+      )}
+
       {isMistral && (
         <>
           <div className="setting-group">

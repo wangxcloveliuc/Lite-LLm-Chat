@@ -1,11 +1,11 @@
 import React, { useRef } from 'react';
-import type { DeepSeekSettings, DoubaoSettings, SiliconFlowSettings, CerebrasSettings, GroqSettings, MistralSettings } from '../types';
+import type { DeepSeekSettings, DoubaoSettings, SiliconFlowSettings, CerebrasSettings, GroqSettings, GrokSettings, MistralSettings } from '../types';
 import { useSidebarDismiss } from './settingsSidebar/useSidebarDismiss';
 import ProviderSpecificSettings from './settingsSidebar/ProviderSpecificSettings';
 import VisionSettingsSection from './settingsSidebar/VisionSettingsSection';
 import CommonSettingsSection from './settingsSidebar/CommonSettingsSection';
 
-type SettingsUnion = DeepSeekSettings | DoubaoSettings | SiliconFlowSettings | CerebrasSettings | GroqSettings | MistralSettings;
+type SettingsUnion = DeepSeekSettings | DoubaoSettings | SiliconFlowSettings | CerebrasSettings | GroqSettings | GrokSettings | MistralSettings;
 
 interface SettingsSidebarProps {
   isOpen: boolean;
@@ -35,6 +35,7 @@ const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
   const isSiliconFlow = provider === 'siliconflow';
   const isCerebras = provider === 'cerebras';
   const isGroq = provider === 'groq';
+  const isGrok = provider === 'grok';
   const isMistral = provider === 'mistral';
 
   const handleChange = (field: string, value: unknown) => {
@@ -69,14 +70,20 @@ const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
       </div>
 
       <div className="settings-content" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-        {isDeepSeek || isDoubao || isSiliconFlow || isCerebras || isGroq || isMistral ? (
+        {isDeepSeek || isDoubao || isSiliconFlow || isCerebras || isGroq || isGrok || isMistral ? (
           <>
             <ProviderSpecificSettings provider={provider} modelId={modelId} settings={settings} handleChange={handleChange} />
 
-            {((!isCerebras && !isDeepSeek && !isGroq && !isMistral) || (isGroq && (modelId.toLowerCase().includes('scout') || modelId.toLowerCase().includes('maverick')))) && (
+            {((!isCerebras && !isDeepSeek && !isGroq && !isGrok && !isMistral) || (isGroq && (modelId.toLowerCase().includes('scout') || modelId.toLowerCase().includes('maverick')))) && (
               <VisionSettingsSection settings={deepseekSettings} handleChange={handleChange} />
             )}
-            <CommonSettingsSection settings={settings} deepseekSettings={deepseekSettings} isCerebras={isCerebras} handleChange={handleChange} />
+            <CommonSettingsSection 
+              settings={settings} 
+              deepseekSettings={deepseekSettings} 
+              isCerebras={isCerebras} 
+              modelId={modelId}
+              handleChange={handleChange} 
+            />
           </>
         ) : (
           <div style={{ textAlign: 'center', color: '#6B7280', marginTop: '40px' }}>

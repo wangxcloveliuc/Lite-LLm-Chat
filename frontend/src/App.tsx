@@ -4,7 +4,7 @@ import Header from './components/Header';
 import ChatArea from './components/ChatArea';
 import SettingsSidebar from './components/SettingsSidebar';
 import { apiClient } from './api/apiClient';
-import type { Provider, Model, Session, Message, DeepSeekSettings, DoubaoSettings, SiliconFlowSettings, CerebrasSettings, GroqSettings, MistralSettings, ChatRequest } from './types';
+import type { Provider, Model, Session, Message, DeepSeekSettings, DoubaoSettings, SiliconFlowSettings, CerebrasSettings, GroqSettings, GrokSettings, MistralSettings, ChatRequest } from './types';
 import './App.css';
 
 function App() {
@@ -89,6 +89,20 @@ function App() {
     include_reasoning: true,
     reasoning_effort: 'default',
     max_completion_tokens: undefined,
+  });
+  const [grokSettings, setGrokSettings] = useState<GrokSettings>({
+    frequency_penalty: 0,
+    max_tokens: undefined,
+    presence_penalty: 0,
+    temperature: 1,
+    top_p: 1,
+    stop: '',
+    system_prompt: '',
+    image_detail: 'auto',
+    image_pixel_limit: undefined,
+    fps: undefined,
+    video_detail: 'auto',
+    max_frames: undefined,
   });
   const [mistralSettings, setMistralSettings] = useState<MistralSettings>({
     temperature: 0.7,
@@ -261,6 +275,11 @@ function App() {
       currentSettings = {
         ...groqSettings,
         stop: groqSettings.stop ? groqSettings.stop.split(',').map((s) => s.trim()) : undefined,
+      };
+    } else if (selectedProvider === 'grok') {
+      currentSettings = {
+        ...grokSettings,
+        stop: grokSettings.stop ? grokSettings.stop.split(',').map((s) => s.trim()) : undefined,
       };
     } else if (selectedProvider === 'mistral') {
       currentSettings = {
@@ -503,6 +522,7 @@ function App() {
           selectedProvider === 'siliconflow' ? siliconflowSettings : 
           selectedProvider === 'cerebras' ? cerebrasSettings : 
           selectedProvider === 'groq' ? groqSettings : 
+          selectedProvider === 'grok' ? grokSettings : 
           selectedProvider === 'mistral' ? mistralSettings : 
           deepseekSettings
         }
@@ -515,6 +535,8 @@ function App() {
             setCerebrasSettings(newSettings as CerebrasSettings);
           } else if (selectedProvider === 'groq') {
             setGroqSettings(newSettings as GroqSettings);
+          } else if (selectedProvider === 'grok') {
+            setGrokSettings(newSettings as GrokSettings);
           } else if (selectedProvider === 'mistral') {
             setMistralSettings(newSettings as MistralSettings);
           } else {

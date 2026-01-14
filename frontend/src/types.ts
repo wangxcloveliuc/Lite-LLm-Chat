@@ -85,6 +85,9 @@ export interface GroqSettings extends DeepSeekSettings {
   max_completion_tokens?: number;
 }
 
+export interface GrokSettings extends DeepSeekSettings {
+}
+
 export interface MistralSettings {
   temperature: number;
   top_p: number;
