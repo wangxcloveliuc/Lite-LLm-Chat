@@ -53,8 +53,24 @@ class GeminiClient(BaseClient):
         )
 
     def _should_enable_thinking(self, model: str) -> bool:
-        return any(model.startswith(prefix) for prefix in self._THINKING_MODELS)
+        # Check if thinking is explicitly mentioned in model name or in the whitelist
+        lowered_model = model.lower()
+        if "thinking" in lowered_model:
+            return True
+        model_name = model[len("models/"):] if model.startswith("models/") else model
+        return any(model_name.startswith(prefix) for prefix in self._THINKING_MODELS)
 
+    def _get_safety_settings(self, threshold: str) -> List[Dict[str, str]]:
+        if not threshold:
+            return None
+        categories = [
+            "HARM_CATEGORY_HARASSMENT",
+            "HARM_CATEGORY_HATE_SPEECH",
+            "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+            "HARM_CATEGORY_DANGEROUS_CONTENT",
+            "HARM_CATEGORY_CIVIC_INTEGRITY",
+        ]
+        return [{"category": cat, "threshold": threshold} for cat in categories]
 
     def _messages_to_contents_and_system(self, messages: List[Dict[str, str]]):
         system_parts: List[str] = []
@@ -229,20 +245,41 @@ class GeminiClient(BaseClient):
 
             # Only enable thinking for specific models
             enable_thinking = self._should_enable_thinking(model)
+            
+            thinking_budget = kwargs.get("thinking_budget")
+            if thinking_budget is None:
+                thinking_budget = -1 # Default to unlimited if model supports it
+                
             thinking_cfg = (
                 self._types.ThinkingConfig(
                     include_thoughts=True,
-                    thinking_budget=-1,  # Unlimited thinking budget
+                    thinking_budget=thinking_budget,
                 )
                 if enable_thinking
                 else None
             )
 
+            # Safety settings
+            safety_threshold = kwargs.get("safety_threshold")
+            safety_settings = self._get_safety_settings(safety_threshold) if safety_threshold else None
+
+            # Stop sequences
+            stop = kwargs.get("stop")
+            if isinstance(stop, str):
+                stop = [stop]
+
             config = self._types.GenerateContentConfig(
                 temperature=temperature,
                 max_output_tokens=max_tokens,
+                top_p=kwargs.get("top_p"),
+                top_k=kwargs.get("top_k"),
+                presence_penalty=kwargs.get("presence_penalty"),
+                frequency_penalty=kwargs.get("frequency_penalty"),
+                seed=kwargs.get("seed"),
+                stop_sequences=stop,
                 system_instruction=system_instruction,
                 thinking_config=thinking_cfg,
+                safety_settings=safety_settings,
             )
 
             # The SDK provides async streaming under client.aio
@@ -279,20 +316,41 @@ class GeminiClient(BaseClient):
 
             # Only enable thinking for specific models
             enable_thinking = self._should_enable_thinking(model)
+            
+            thinking_budget = kwargs.get("thinking_budget")
+            if thinking_budget is None:
+                thinking_budget = -1 # Default to unlimited if model supports it
+                
             thinking_cfg = (
                 self._types.ThinkingConfig(
                     include_thoughts=True,
-                    thinking_budget=-1,  # Unlimited thinking budget
+                    thinking_budget=thinking_budget,
                 )
                 if enable_thinking
                 else None
             )
 
+            # Safety settings
+            safety_threshold = kwargs.get("safety_threshold")
+            safety_settings = self._get_safety_settings(safety_threshold) if safety_threshold else None
+
+            # Stop sequences
+            stop = kwargs.get("stop")
+            if isinstance(stop, str):
+                stop = [stop]
+
             config = self._types.GenerateContentConfig(
                 temperature=temperature,
                 max_output_tokens=max_tokens,
+                top_p=kwargs.get("top_p"),
+                top_k=kwargs.get("top_k"),
+                presence_penalty=kwargs.get("presence_penalty"),
+                frequency_penalty=kwargs.get("frequency_penalty"),
+                seed=kwargs.get("seed"),
+                stop_sequences=stop,
                 system_instruction=system_instruction,
                 thinking_config=thinking_cfg,
+                safety_settings=safety_settings,
             )
 
             response = await self._client.aio.models.generate_content(

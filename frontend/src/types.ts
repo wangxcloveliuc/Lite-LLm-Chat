@@ -95,6 +95,13 @@ export interface OpenRouterSettings extends DeepSeekSettings {
   include_reasoning?: boolean;
 }
 
+export interface GeminiSettings extends DeepSeekSettings {
+  top_k?: number;
+  seed?: number;
+  thinking_budget?: number;
+  safety_threshold?: 'BLOCK_NONE' | 'BLOCK_LOW_AND_ABOVE' | 'BLOCK_MED_AND_ABOVE' | 'BLOCK_ONLY_HIGH' | 'HARM_BLOCK_THRESHOLD_UNSPECIFIED';
+}
+
 export interface MistralSettings {
   temperature: number;
   top_p: number;
@@ -149,6 +156,9 @@ export interface ChatRequest {
   transforms?: string[];
   models?: string[];
   route?: string;
+  // Gemini-specific
+  seed?: number;
+  safety_threshold?: string;
 }
 
 export interface StreamChunk {

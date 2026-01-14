@@ -8,9 +8,10 @@ import type {
   GrokSettings,
   OpenRouterSettings,
   MistralSettings,
+  GeminiSettings,
 } from '../../types';
 
-type SettingsUnion = DeepSeekSettings | DoubaoSettings | SiliconFlowSettings | CerebrasSettings | GroqSettings | GrokSettings | OpenRouterSettings | MistralSettings;
+type SettingsUnion = DeepSeekSettings | DoubaoSettings | SiliconFlowSettings | CerebrasSettings | GroqSettings | GrokSettings | OpenRouterSettings | MistralSettings | GeminiSettings;
 
 type HandleChange = (field: string, value: unknown) => void;
 
@@ -34,6 +35,7 @@ const ProviderSpecificSettings: React.FC<ProviderSpecificSettingsProps> = ({
   const isGrok = provider === 'grok';
   const isOpenRouter = provider === 'openrouter';
   const isMistral = provider === 'mistral';
+  const isGemini = provider === 'gemini';
 
   const doubaoSettings = settings as DoubaoSettings;
   const siliconflowSettings = settings as SiliconFlowSettings;
@@ -41,8 +43,9 @@ const ProviderSpecificSettings: React.FC<ProviderSpecificSettingsProps> = ({
   const groqSettings = settings as GroqSettings;
   const openrouterSettings = settings as OpenRouterSettings;
   const mistralSettings = settings as MistralSettings;
+  const geminiSettings = settings as GeminiSettings;
 
-  if (!isDoubao && !isSiliconFlow && !isCerebras && !isGroq && !isGrok && !isOpenRouter && !isMistral) return null;
+  if (!isDoubao && !isSiliconFlow && !isCerebras && !isGroq && !isGrok && !isOpenRouter && !isMistral && !isGemini) return null;
 
   return (
     <>
@@ -144,6 +147,80 @@ const ProviderSpecificSettings: React.FC<ProviderSpecificSettingsProps> = ({
             <p style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
               Set a seed for deterministic results.
             </p>
+          </div>
+        </>
+      )}
+
+      {isGemini && (
+        <>
+          <div className="setting-group">
+            <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>
+              Thinking Budget ({geminiSettings.thinking_budget || 'Auto'})
+            </label>
+            <input
+              type="number"
+              placeholder="e.g. 16000"
+              value={geminiSettings.thinking_budget || ''}
+              onChange={(e) => {
+                const val = e.target.value === '' ? undefined : parseInt(e.target.value);
+                handleChange('thinking_budget', val);
+              }}
+              style={{ width: '100%', padding: '8px', border: '1px solid #E5E7EB', borderRadius: '4px' }}
+            />
+            <p style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+              Maximum thinking budget in bytes. Only for thinking models (e.g., flash-thinking).
+            </p>
+          </div>
+
+          <div className="setting-group">
+            <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>
+              Safety Threshold
+            </label>
+            <select
+              value={geminiSettings.safety_threshold || 'BLOCK_NONE'}
+              onChange={(e) => handleChange('safety_threshold', e.target.value)}
+              style={{ width: '100%', padding: '8px', border: '1px solid #E5E7EB', borderRadius: '4px', fontSize: '14px' }}
+            >
+              <option value="BLOCK_NONE">Block None</option>
+              <option value="BLOCK_LOW_AND_ABOVE">Block Low and Above</option>
+              <option value="BLOCK_MED_AND_ABOVE">Block Medium and Above</option>
+              <option value="BLOCK_ONLY_HIGH">Block Only High</option>
+            </select>
+            <p style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+              Global safety filter threshold for all categories.
+            </p>
+          </div>
+
+          <div className="setting-group">
+            <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>
+              Top K ({geminiSettings.top_k !== undefined ? geminiSettings.top_k : 'Default'})
+            </label>
+            <input
+              type="number"
+              placeholder="None"
+              value={geminiSettings.top_k !== undefined ? geminiSettings.top_k : ''}
+              onChange={(e) => {
+                const val = e.target.value === '' ? undefined : parseInt(e.target.value);
+                handleChange('top_k', val);
+              }}
+              style={{ width: '100%', padding: '8px', border: '1px solid #E5E7EB', borderRadius: '4px' }}
+            />
+          </div>
+
+          <div className="setting-group">
+            <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>
+              Seed
+            </label>
+            <input
+              type="number"
+              placeholder="None"
+              value={geminiSettings.seed !== undefined ? geminiSettings.seed : ''}
+              onChange={(e) => {
+                const val = e.target.value === '' ? undefined : parseInt(e.target.value);
+                handleChange('seed', val);
+              }}
+              style={{ width: '100%', padding: '8px', border: '1px solid #E5E7EB', borderRadius: '4px' }}
+            />
           </div>
         </>
       )}

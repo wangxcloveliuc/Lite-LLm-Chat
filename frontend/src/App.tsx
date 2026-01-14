@@ -4,7 +4,7 @@ import Header from './components/Header';
 import ChatArea from './components/ChatArea';
 import SettingsSidebar from './components/SettingsSidebar';
 import { apiClient } from './api/apiClient';
-import type { Provider, Model, Session, Message, DeepSeekSettings, DoubaoSettings, SiliconFlowSettings, CerebrasSettings, GroqSettings, GrokSettings, OpenRouterSettings, MistralSettings, ChatRequest } from './types';
+import type { Provider, Model, Session, Message, DeepSeekSettings, DoubaoSettings, SiliconFlowSettings, CerebrasSettings, GroqSettings, GrokSettings, OpenRouterSettings, GeminiSettings, MistralSettings, ChatRequest } from './types';
 import './App.css';
 
 function App() {
@@ -128,6 +128,19 @@ function App() {
     frequency_penalty: 0,
     presence_penalty: 0,
   });
+  const [geminiSettings, setGeminiSettings] = useState<GeminiSettings>({
+    frequency_penalty: 0,
+    max_tokens: undefined,
+    presence_penalty: 0,
+    temperature: 1,
+    top_p: 1,
+    stop: '',
+    system_prompt: '',
+    top_k: undefined,
+    seed: undefined,
+    thinking_budget: undefined,
+    safety_threshold: 'BLOCK_NONE',
+  });
 
   type ChatRequestSettings = {
     temperature?: number;
@@ -157,6 +170,8 @@ function App() {
     thinking_budget?: number;
     min_p?: number;
     top_k?: number;
+    seed?: number;
+    safety_threshold?: string;
   };
 
   const loadProviders = useCallback(async () => {
@@ -304,6 +319,11 @@ function App() {
         ...mistralSettings,
         stop: mistralSettings.stop ? mistralSettings.stop.split(',').map((s) => s.trim()) : undefined,
       };
+    } else if (selectedProvider === 'gemini') {
+      currentSettings = {
+        ...geminiSettings,
+        stop: geminiSettings.stop ? geminiSettings.stop.split(',').map((s) => s.trim()) : undefined,
+      };
     } else {
       // Fallback to deepseek settings as default for other providers (common basic settings)
       currentSettings = {
@@ -348,9 +368,12 @@ function App() {
         min_p: currentSettings.min_p,
         top_k: currentSettings.top_k,
         // OpenRouter-specific
-        transforms: (currentSettings as OpenRouterSettings).transforms ? (currentSettings as OpenRouterSettings).transforms?.split(',').map(s => s.trim()) : undefined,
-        models: (currentSettings as OpenRouterSettings).models ? (currentSettings as OpenRouterSettings).models?.split(',').map(s => s.trim()) : undefined,
-        route: (currentSettings as OpenRouterSettings).route,
+        transforms: (currentSettings as any).transforms ? (currentSettings as any).transforms?.split(',').map((s: string) => s.trim()) : undefined,
+        models: (currentSettings as any).models ? (currentSettings as any).models?.split(',').map((s: string) => s.trim()) : undefined,
+        route: (currentSettings as any).route,
+        // Gemini-specific
+        seed: currentSettings.seed,
+        safety_threshold: currentSettings.safety_threshold,
       };
 
       for await (const chunk of apiClient.chatStream(request, controller.signal)) {
@@ -547,6 +570,7 @@ function App() {
           selectedProvider === 'grok' ? grokSettings : 
           selectedProvider === 'openrouter' ? openrouterSettings : 
           selectedProvider === 'mistral' ? mistralSettings : 
+          selectedProvider === 'gemini' ? geminiSettings :
           deepseekSettings
         }
         onSettingsChange={(newSettings) => {
@@ -564,6 +588,8 @@ function App() {
             setOpenrouterSettings(newSettings as OpenRouterSettings);
           } else if (selectedProvider === 'mistral') {
             setMistralSettings(newSettings as MistralSettings);
+          } else if (selectedProvider === 'gemini') {
+            setGeminiSettings(newSettings as GeminiSettings);
           } else {
             setDeepseekSettings(newSettings as DeepSeekSettings);
           }

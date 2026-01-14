@@ -8,9 +8,10 @@ import type {
   GrokSettings,
   OpenRouterSettings,
   MistralSettings,
+  GeminiSettings,
 } from '../../types';
 
-type SettingsUnion = DeepSeekSettings | DoubaoSettings | SiliconFlowSettings | CerebrasSettings | GroqSettings | GrokSettings | OpenRouterSettings | MistralSettings;
+type SettingsUnion = DeepSeekSettings | DoubaoSettings | SiliconFlowSettings | CerebrasSettings | GroqSettings | GrokSettings | OpenRouterSettings | MistralSettings | GeminiSettings;
 
 type HandleChange = (field: string, value: unknown) => void;
 
@@ -31,7 +32,8 @@ const CommonSettingsSection: React.FC<CommonSettingsSectionProps> = ({
 }) => {
   const isReasoningModel = modelId.toLowerCase().includes('reasoning') || 
                            modelId.toLowerCase().startsWith('o1-') || 
-                           modelId.toLowerCase().startsWith('o3-');
+                           modelId.toLowerCase().startsWith('o3-') ||
+                           modelId.toLowerCase().includes('thinking');
 
   return (
     <>
