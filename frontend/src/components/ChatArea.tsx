@@ -34,12 +34,14 @@ function ChatMessage({
   message, 
   index, 
   onEdit, 
-  onRefresh 
+  onRefresh,
+  onImageClick
 }: { 
   message: Message; 
   index: number; 
   onEdit: (index: number, content: string) => void;
   onRefresh: (index: number) => void;
+  onImageClick: (url: string) => void;
 }) {
   const [isThoughtExpanded, setIsThoughtExpanded] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
@@ -128,7 +130,7 @@ function ChatMessage({
                 src={getFullImageUrl(url)} 
                 alt="attachment" 
                 className="message-image" 
-                onClick={() => window.open(getFullImageUrl(url), '_blank')}
+                onClick={() => onImageClick(getFullImageUrl(url))}
               />
             ))}
           </div>
@@ -180,6 +182,17 @@ function ChatMessage({
                     </code>
                   );
                 },
+                img({ src, alt }) {
+                  return (
+                    <img 
+                      src={src} 
+                      alt={alt} 
+                      className="message-markdown-image" 
+                      onClick={() => src && onImageClick(src)}
+                      title="Click to view full size"
+                    />
+                  );
+                }
               } satisfies Components
             }
           >
@@ -267,6 +280,7 @@ export default function ChatArea({
 }: ChatAreaProps) {
   const [input, setInput] = useState('');
   const [pendingFiles, setPendingFiles] = useState<{ id: string; url?: string; progress: number; file: File; blobUrl: string; type: 'image' | 'video' | 'audio' }[]>([]);
+  const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -375,7 +389,16 @@ export default function ChatArea({
           if (showTypingIndicator && isLast && message.role === 'assistant' && !message.content && !message.thought_process) {
             return null;
           }
-          return <ChatMessage key={index} message={message} index={index} onEdit={onEditMessage} onRefresh={onRefreshMessage} />;
+          return (
+            <ChatMessage 
+              key={index} 
+              message={message} 
+              index={index} 
+              onEdit={onEditMessage} 
+              onRefresh={onRefreshMessage}
+              onImageClick={(url) => setSelectedImageUrl(url)}
+            />
+          );
         })}
         {showTypingIndicator && (
           <div className="message assistant">
@@ -472,6 +495,19 @@ export default function ChatArea({
           </button>
         </div>
       </div>
+
+      {selectedImageUrl && (
+        <div className="lightbox-overlay" onClick={() => setSelectedImageUrl(null)}>
+          <button className="lightbox-close" onClick={() => setSelectedImageUrl(null)}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M18 6L6 18M6 6l12 12" />
+            </svg>
+          </button>
+          <div className="lightbox-content" onClick={(e) => e.stopPropagation()}>
+            <img src={selectedImageUrl} alt="Full size" />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
