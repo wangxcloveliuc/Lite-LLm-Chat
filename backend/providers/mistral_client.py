@@ -1,7 +1,5 @@
-import httpx
-from openai import OpenAI
-from typing import List, Dict, AsyncIterator, Optional, Tuple
-import json
+from typing import List, Dict, Optional, Tuple
+from .openai_base import OpenAICompatibleClient
 
 try:
     from ..config import settings
@@ -9,19 +7,11 @@ except (ImportError, ValueError):
     from config import settings
 
 
-class MistralClient:
+class MistralClient(OpenAICompatibleClient):
     def __init__(self):
-        http_client = None
-        if settings.http_proxy:
-            http_client = httpx.Client(
-                proxy=settings.http_proxy,
-            )
-
-        self.client = OpenAI(
+        super().__init__(
             api_key=settings.mistral_api_key,
             base_url=settings.mistral_base_url,
-            http_client=http_client,
-            timeout=settings.provider_timeout,
         )
 
     def _extract_reasoning_and_text(self, content_obj) -> Tuple[str, str]:
@@ -52,30 +42,103 @@ class MistralClient:
 
         return "".join(reasoning_parts), "".join(text_parts)
 
-    async def stream_chat(
-        self,
-        model: str,
-        messages: List[Dict[str, str]],
-        temperature: float = 1,
-        max_tokens: Optional[int] = None,
-    ) -> AsyncIterator[str]:
+    def _sanitize_mistral_kwargs(self, kwargs: Dict) -> Tuple[Dict, Dict, Dict]:
+        """Sanitize kwargs for Mistral and extract vision/extra params."""
+        sanitized = kwargs.copy()
+        
+        # Extract vision params for processing
+        vision_params = {
+            "image_detail": sanitized.pop("image_detail", None),
+            "image_pixel_limit": sanitized.pop("image_pixel_limit", None),
+            "fps": sanitized.pop("fps", None),
+            "video_detail": sanitized.pop("video_detail", None),
+            "max_frames": sanitized.pop("max_frames", None),
+        }
+        
+        # Remove unsupported extended settings
+        extended_keys = [
+            "thinking", "reasoning_effort", "disable_reasoning", "reasoning_format", 
+            "include_reasoning", "max_completion_tokens", "enable_thinking", 
+            "thinking_budget", "min_p", "top_k"
+        ]
+        for key in extended_keys:
+            sanitized.pop(key, None)
+            
+        # Mistral specific extras
+        extra_body = {}
+        if "safe_prompt" in sanitized:
+            extra_body["safe_prompt"] = sanitized.pop("safe_prompt")
+        
+        if "random_seed" in sanitized:
+            # OpenAI generic seed param
+            sanitized["seed"] = sanitized.pop("random_seed")
+
+        # Remove None values strictly as Mistral API is sensitive to null/None for some fields like 'stop'
+        sanitized = {k: v for k, v in sanitized.items() if v is not None}
+
+        return sanitized, vision_params, extra_body
+
+    async def chat(self, model: str, messages: List[Dict], **kwargs) -> Tuple[str, str]:
+        # Mistral might return reasoning in structured content instead of reasoning_content field
+        sanitized_kwargs, vision_params, extra_body = self._sanitize_mistral_kwargs(kwargs)
+        
+        processed_messages = self._process_messages(
+            messages,
+            **vision_params
+        )
+        
         try:
             response = self.client.chat.completions.create(
                 model=model,
-                messages=messages,
-                temperature=temperature,
-                max_tokens=max_tokens,
+                messages=processed_messages,
+                stream=False,
+                extra_body=extra_body or None,
+                **sanitized_kwargs
+            )
+            message_content = response.choices[0].message.content
+            reasoning, text = self._extract_reasoning_and_text(message_content)
+            if not text and isinstance(message_content, str):
+                text = message_content
+            
+            # If our base reasoning extraction didn't find anything, use what we found here
+            base_reasoning = self._extract_reasoning(response.choices[0].message)
+            return text or "", reasoning or base_reasoning
+        except Exception as e:
+            raise Exception(f"Mistral API error: {str(e)}")
+
+    async def stream_chat(self, model: str, messages: List[Dict], **kwargs):
+        # Override to use Mistral-specific extraction
+        import json
+        sanitized_kwargs, vision_params, extra_body = self._sanitize_mistral_kwargs(kwargs)
+        
+        processed_messages = self._process_messages(
+            messages,
+            **vision_params
+        )
+
+        try:
+            response = self.client.chat.completions.create(
+                model=model,
+                messages=processed_messages,
                 stream=True,
+                extra_body=extra_body or None,
+                **sanitized_kwargs
             )
 
             for chunk in response:
+                if not chunk.choices:
+                    continue
                 delta = chunk.choices[0].delta
 
                 delta_content = getattr(delta, "content", None)
                 reasoning, text = self._extract_reasoning_and_text(delta_content)
 
-                if reasoning:
-                    yield f"data: {json.dumps({'reasoning': reasoning})}\n\n"
+                # Also check standard reasoning field
+                base_reasoning = self._extract_reasoning(delta)
+                final_reasoning = reasoning or base_reasoning
+
+                if final_reasoning:
+                    yield f"data: {json.dumps({'reasoning': final_reasoning})}\n\n"
                 if text:
                     yield f"data: {json.dumps({'content': text})}\n\n"
 
@@ -85,37 +148,6 @@ class MistralClient:
             error_msg = f"Error: {str(e)}"
             yield f"data: {json.dumps({'error': error_msg})}\n\n"
 
-    async def chat(
-        self,
-        model: str,
-        messages: List[Dict[str, str]],
-        temperature: float = 1,
-        max_tokens: Optional[int] = None,
-    ) -> Tuple[str, str]:
-        try:
-            response = self.client.chat.completions.create(
-                model=model,
-                messages=messages,
-                temperature=temperature,
-                max_tokens=max_tokens,
-                stream=False,
-            )
-
-            message_content = response.choices[0].message.content
-            reasoning, text = self._extract_reasoning_and_text(message_content)
-            if not text and isinstance(message_content, str):
-                text = message_content
-            return text or "", reasoning or ""
-        except Exception as e:
-            raise Exception(f"Mistral API error: {str(e)}")
-
-    def list_models(self) -> List[str]:
-        try:
-            response = self.client.models.list()
-            return [model.id for model in response.data]
-        except Exception as e:
-            print(f"Error fetching Mistral models: {e}")
-            return []
-
 
 mistral_client = MistralClient()
+

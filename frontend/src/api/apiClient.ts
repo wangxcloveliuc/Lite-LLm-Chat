@@ -1,6 +1,6 @@
 import type { Provider, Model, Session, Message, ChatRequest, StreamChunk } from '../types';
 
-const BASE_URL = 'http://localhost:8000';
+const BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';
 const API_PREFIX = '/api/v1';
 
 class APIClient {
@@ -109,6 +109,53 @@ class APIClient {
     }
   }
 
+  async uploadImage(file: File, onProgress?: (percent: number) => void): Promise<string | null> {
+    return this.uploadFile(file, onProgress);
+  }
+
+  async uploadVideo(file: File, onProgress?: (percent: number) => void): Promise<string | null> {
+    return this.uploadFile(file, onProgress);
+  }
+
+  async uploadAudio(file: File, onProgress?: (percent: number) => void): Promise<string | null> {
+    return this.uploadFile(file, onProgress);
+  }
+
+  private async uploadFile(file: File, onProgress?: (percent: number) => void): Promise<string | null> {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      const formData = new FormData();
+      formData.append('file', file);
+
+      xhr.upload.addEventListener('progress', (event) => {
+        if (event.lengthComputable && onProgress) {
+          const percent = Math.round((event.loaded / event.total) * 100);
+          onProgress(percent);
+        }
+      });
+
+      xhr.onreadystatechange = () => {
+        if (xhr.readyState === 4) {
+          if (xhr.status === 200) {
+            try {
+              const data = JSON.parse(xhr.responseText);
+              resolve(data.url);
+            } catch {
+              reject(new Error('Failed to parse response'));
+            }
+          } else {
+            reject(new Error('Upload failed'));
+          }
+        }
+      };
+
+      xhr.onerror = () => reject(new Error('Network error'));
+
+      xhr.open('POST', this.url('/upload'));
+      xhr.send(formData);
+    });
+  }
+
   async deleteSession(sessionId: number): Promise<boolean> {
     try {
       const response = await fetch(this.url(`/sessions/${sessionId}`), {
@@ -209,7 +256,13 @@ class APIClient {
         body: JSON.stringify({
           provider,
           model,
-          messages: messages.map((m) => ({ role: m.role, content: m.content })),
+          messages: messages.map((m) => ({
+            role: m.role,
+            content: m.content,
+            images: m.images,
+            videos: m.videos,
+            audios: m.audios,
+          })),
           stream: false,
           session_id: sessionId,
           title,

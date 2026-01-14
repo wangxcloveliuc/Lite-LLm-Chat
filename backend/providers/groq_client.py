@@ -1,12 +1,5 @@
-"""
-Groq API client (OpenAI-compatible)
-
-This project uses the OpenAI Python SDK and configures a provider-specific base_url.
-"""
-import httpx
-from openai import OpenAI
-from typing import List, Dict, AsyncIterator, Optional, Tuple
-import json
+from typing import List, Optional
+from .openai_base import OpenAICompatibleClient
 
 try:
     from ..config import settings
@@ -14,100 +7,78 @@ except (ImportError, ValueError):
     from config import settings
 
 
-class GroqClient:
+class GroqClient(OpenAICompatibleClient):
     """Client for interacting with Groq OpenAI-compatible API"""
 
     def __init__(self):
-        http_client = None
-        if settings.http_proxy:
-            http_client = httpx.Client(
-                proxy=settings.http_proxy,
-            )
-
-        self.client = OpenAI(
+        super().__init__(
             api_key=settings.groq_api_key,
             base_url=settings.groq_base_url,
-            http_client=http_client,
-            timeout=settings.provider_timeout,
         )
 
-    async def stream_chat(
-        self,
-        model: str,
-        messages: List[Dict[str, str]],
-        temperature: float = 1,
-        max_tokens: Optional[int] = None,
-    ) -> AsyncIterator[str]:
-        try:
-            extra_body = {}
-            if model == "qwen/qwen3-32b":
-                extra_body["reasoning_format"] = "parsed"
+    def _prepare_groq_args(self, model: str, **kwargs):
+        """Prepare Groq-specific arguments based on documentation."""
+        sanitized_kwargs = kwargs.copy()
+        
+        # Get existing extra_body
+        extra_body = sanitized_kwargs.pop("extra_body", {}) or {}
+        
+        # Check model types
+        is_gpt_oss = "gpt-oss" in model.lower()
+        is_qwen3 = "qwen3" in model.lower()
+        is_reasoning_model = is_gpt_oss or is_qwen3
 
-            response = self.client.chat.completions.create(
-                model=model,
-                messages=messages,
-                temperature=temperature,
-                max_tokens=max_tokens,
-                stream=True,
-                extra_body=extra_body,
-            )
+        # 1. Clean up top-level args that the OpenAI SDK doesn't support
+        # Any custom Groq parameter should be in extra_body
+        rf = sanitized_kwargs.pop("reasoning_format", None)
+        ir = sanitized_kwargs.pop("include_reasoning", None)
+        re = sanitized_kwargs.pop("reasoning_effort", None)
+        mct = sanitized_kwargs.pop("max_completion_tokens", None)
+        mt = sanitized_kwargs.pop("max_tokens", None)
 
-            for chunk in response:
-                delta = chunk.choices[0].delta
+        # 2. Re-assign tokens (Groq prefers max_completion_tokens for all, butmt is safer top-level)
+        final_tokens = mct or mt
+        if is_reasoning_model:
+            # For reasoning models, move to extra_body to ensure compatibility
+            if final_tokens:
+                extra_body["max_completion_tokens"] = final_tokens
+            # Ensure max_tokens is not passed twice or as a conflicting top-level
+            sanitized_kwargs["max_tokens"] = None
+        else:
+            # For standard models, use max_tokens as top-level if provided
+            if final_tokens:
+                sanitized_kwargs["max_tokens"] = final_tokens
 
-                if hasattr(delta, "reasoning") and delta.reasoning:
-                    reasoning = delta.reasoning
-                    yield f"data: {json.dumps({'reasoning': reasoning})}\n\n"
+        # 3. Re-assign reasoning fields ONLY if supported by model
+        if is_gpt_oss:
+            if re in ["low", "medium", "high"]:
+                extra_body["reasoning_effort"] = re
+            if ir is not None:
+                extra_body["include_reasoning"] = ir
+        elif is_qwen3:
+            if re in ["none", "default"]:
+                extra_body["reasoning_effort"] = re
+            if rf in ["hidden", "raw", "parsed"]:
+                extra_body["reasoning_format"] = rf
+            elif ir is not None:
+                # Mutual exclusivity usually means rf is better for Qwen
+                extra_body["include_reasoning"] = ir
+        
+        if extra_body:
+            sanitized_kwargs["extra_body"] = extra_body
+            
+        return sanitized_kwargs
 
-                if getattr(delta, "content", None):
-                    content = delta.content
-                    yield f"data: {json.dumps({'content': content})}\n\n"
+    async def chat(self, model: str, *args, **kwargs):
+        groq_kwargs = self._prepare_groq_args(model, **kwargs)
+        return await super().chat(model, *args, **groq_kwargs)
 
-            yield f"data: {json.dumps({'done': True})}\n\n"
-
-        except Exception as e:
-            error_msg = f"Error: {str(e)}"
-            yield f"data: {json.dumps({'error': error_msg})}\n\n"
-
-    async def chat(
-        self,
-        model: str,
-        messages: List[Dict[str, str]],
-        temperature: float = 1,
-        max_tokens: Optional[int] = None,
-    ) -> Tuple[str, str]:
-        try:
-            extra_body = {}
-            if model == "qwen/qwen3-32b":
-                extra_body["reasoning_format"] = "parsed"
-
-            response = self.client.chat.completions.create(
-                model=model,
-                messages=messages,
-                temperature=temperature,
-                max_tokens=max_tokens,
-                stream=False,
-                extra_body=extra_body
-            )
-
-            content = response.choices[0].message.content or ""
-            reasoning = ""
-            if hasattr(response.choices[0].message, "reasoning"):
-                reasoning = response.choices[0].message.reasoning or ""
-
-            return content, reasoning
-        except Exception as e:
-            raise Exception(f"Groq API error: {str(e)}")
-
-    def list_models(self) -> List[str]:
-        """List available models from Groq API"""
-        try:
-            response = self.client.models.list()
-            return [model.id for model in response.data]
-        except Exception as e:
-            print(f"Error fetching Groq models: {e}")
-            return []
+    async def stream_chat(self, model: str, *args, **kwargs):
+        groq_kwargs = self._prepare_groq_args(model, **kwargs)
+        async for chunk in super().stream_chat(model, *args, **groq_kwargs):
+            yield chunk
 
 
 # Singleton instance
 groq_client = GroqClient()
+

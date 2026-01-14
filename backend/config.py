@@ -1,25 +1,32 @@
 """
 Configuration settings for the FastAPI backend
 """
+
 from pydantic_settings import BaseSettings
 from typing import Optional
 
 
 class Settings(BaseSettings):
     """Application settings"""
-    
+
     # API Configuration
     app_name: str = "Lite-LLM-Chat Backend"
     app_version: str = "1.0.0"
     api_prefix: str = "/api/v1"
 
+    # Server
+    backend_port: int = 8000
+
     http_proxy: Optional[str] = None
     # Outbound request timeout (seconds) for LLM provider calls
     provider_timeout: float = 20.0
-    
+
+    # Model list cache TTL in seconds (set to 0 to disable caching)
+    model_cache_ttl: int = 3600
+
     # Database
     database_url: str = "sqlite:///./chat_history.db"
-    
+
     # DeepSeek API
     deepseek_api_key: Optional[str] = None
     deepseek_base_url: str = "https://api.deepseek.com"
@@ -59,7 +66,7 @@ class Settings(BaseSettings):
 
     # CORS
     cors_origins: list = ["*"]
-    
+
     class Config:
         env_file = ".env"
         case_sensitive = False

@@ -1,20 +1,34 @@
 import { useState, useRef, useEffect } from 'react';
+import type { CSSProperties } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkBreaks from 'remark-breaks';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { apiClient } from '../api/apiClient';
 import type { Message } from '../types';
+import type { Components } from 'react-markdown';
+
+const syntaxTheme: { [key: string]: CSSProperties } = oneLight as unknown as { [key: string]: CSSProperties };
 
 interface ChatAreaProps {
   messages: Message[];
   isLoading: boolean;
   isChatActive: boolean;
-  onSendMessage: (content: string) => void;
+  onSendMessage: (content: string, imageUrls?: string[], videoUrls?: string[], audioUrls?: string[]) => void;
   onStopMessage: () => void;
   onEditMessage: (index: number, content: string) => void;
   onRefreshMessage: (index: number) => void;
 }
+
+const getFullImageUrl = (url: string) => {
+  if (url.startsWith('http') || url.startsWith('data:')) {
+    return url;
+  }
+  const baseUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';
+  const cleanBaseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+  return `${cleanBaseUrl}${url.startsWith('/') ? '' : '/'}${url}`;
+};
 
 function ChatMessage({ 
   message, 
@@ -106,28 +120,68 @@ function ChatMessage({
             )}
           </div>
         )}
+        {message.images && message.images.length > 0 && (
+          <div className="message-images">
+            {message.images.map((url, i) => (
+              <img 
+                key={i} 
+                src={getFullImageUrl(url)} 
+                alt="attachment" 
+                className="message-image" 
+                onClick={() => window.open(getFullImageUrl(url), '_blank')}
+              />
+            ))}
+          </div>
+        )}
+        {message.videos && message.videos.length > 0 && (
+          <div className="message-videos">
+            {message.videos.map((url, i) => (
+              <video 
+                key={i} 
+                src={getFullImageUrl(url)} 
+                controls 
+                className="message-video"
+                style={{ maxWidth: '100%', borderRadius: '8px', marginTop: '8px' }}
+              />
+            ))}
+          </div>
+        )}
+        {message.audios && message.audios.length > 0 && (
+          <div className="message-audios" style={{ marginTop: '8px' }}>
+            {message.audios.map((url, i) => (
+              <audio 
+                key={i} 
+                src={getFullImageUrl(url)} 
+                controls 
+                className="message-audio"
+                style={{ width: '100%', borderRadius: '8px' }}
+              />
+            ))}
+          </div>
+        )}
         <div className="message-content">
           <ReactMarkdown
             remarkPlugins={[remarkGfm, remarkBreaks]}
-            components={{
-              code({ node, inline, className, children, ...props }: any) {
-                const match = /language-(\w+)/.exec(className || '');
-                return !inline && match ? (
-                  <SyntaxHighlighter
-                    style={oneLight}
-                    language={match[1]}
-                    PreTag="div"
-                    {...props}
-                  >
-                    {String(children).replace(/\n$/, '')}
-                  </SyntaxHighlighter>
-                ) : (
-                  <code className={className} {...props}>
-                    {children}
-                  </code>
-                );
-              },
-            }}
+            components={
+              {
+                code({ className, children, ...props }) {
+                  const match = /language-(\w+)/.exec(className || '');
+                  return match ? (
+                    <SyntaxHighlighter
+                      style={syntaxTheme}
+                      language={match[1]}
+                      PreTag="div"
+                    >
+                      {String(children).replace(/\n$/, '')}
+                    </SyntaxHighlighter>
+                  ) : (
+                    <code className={className} {...props}>
+                      {children}
+                    </code>
+                  );
+                },
+              } satisfies Components
+            }
           >
             {message.content}
           </ReactMarkdown>
@@ -212,8 +266,10 @@ export default function ChatArea({
   onRefreshMessage,
 }: ChatAreaProps) {
   const [input, setInput] = useState('');
+  const [pendingFiles, setPendingFiles] = useState<{ id: string; url?: string; progress: number; file: File; blobUrl: string; type: 'image' | 'video' | 'audio' }[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -223,14 +279,71 @@ export default function ChatArea({
     scrollToBottom();
   }, [messages]);
 
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    const newPending = Array.from(files).map(file => ({
+      id: Math.random().toString(36).substring(7),
+      file,
+      progress: 0,
+      blobUrl: URL.createObjectURL(file),
+      type: file.type.startsWith('video/') ? 'video' as const : 
+            file.type.startsWith('audio/') ? 'audio' as const : 'image' as const
+    }));
+
+    setPendingFiles(prev => [...prev, ...newPending]);
+
+    // Reset file input so same file can be selected again if needed
+    if (fileInputRef.current) fileInputRef.current.value = '';
+
+    // Start uploads
+    for (const item of newPending) {
+      try {
+        let uploadFn;
+        if (item.type === 'video') {
+          uploadFn = apiClient.uploadVideo.bind(apiClient);
+        } else if (item.type === 'audio') {
+          uploadFn = apiClient.uploadAudio.bind(apiClient);
+        } else {
+          uploadFn = apiClient.uploadImage.bind(apiClient);
+        }
+        
+        const url = await uploadFn(item.file, (progress) => {
+          setPendingFiles(prev => prev.map(p => p.id === item.id ? { ...p, progress } : p));
+        });
+        if (url) {
+          setPendingFiles(prev => prev.map(p => p.id === item.id ? { ...p, url, progress: 100 } : p));
+        }
+      } catch (err) {
+        console.error('Upload failed', err);
+        setPendingFiles(prev => prev.filter(p => p.id !== item.id));
+      }
+    }
+  };
+
+  const removePendingFile = (id: string) => {
+    setPendingFiles(prev => {
+      const item = prev.find(p => p.id === id);
+      if (item) URL.revokeObjectURL(item.blobUrl);
+      return prev.filter(p => p.id !== id);
+    });
+  };
+
   const handleSubmit = () => {
     if (isLoading) {
       onStopMessage();
       return;
     }
-    if (input.trim()) {
-      onSendMessage(input);
+    if (input.trim() || pendingFiles.some(f => f.url)) {
+      const imageUrls = pendingFiles.filter(f => f.url && f.type === 'image').map(f => f.url!);
+      const videoUrls = pendingFiles.filter(f => f.url && f.type === 'video').map(f => f.url!);
+      const audioUrls = pendingFiles.filter(f => f.url && f.type === 'audio').map(f => f.url!);
+      onSendMessage(input, imageUrls, videoUrls, audioUrls);
       setInput('');
+      // Clean up blob URLs
+      pendingFiles.forEach(f => URL.revokeObjectURL(f.blobUrl));
+      setPendingFiles([]);
     }
   };
 
@@ -277,8 +390,47 @@ export default function ChatArea({
       </div>
 
       <div className={`input-container ${isChatActive ? 'chat-active' : ''}`}>
+        {pendingFiles.length > 0 && (
+          <div className="pending-images-bar">
+            {pendingFiles.map((file) => (
+              <div key={file.id} className="pending-image-container">
+                {file.type === 'video' ? (
+                  <video src={file.blobUrl} className="pending-image" />
+                ) : file.type === 'audio' ? (
+                  <div className="pending-image audio-placeholder">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: '24px' }}>
+                      <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                      <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                      <line x1="12" y1="19" x2="12" y2="23" />
+                      <line x1="8" y1="23" x2="16" y2="23" />
+                    </svg>
+                  </div>
+                ) : (
+                  <img src={file.blobUrl} alt="pending" className="pending-image" />
+                )}
+                {file.progress < 100 && (
+                  <div className="upload-progress-overlay">
+                    <div
+                      className="progress-ring"
+                      style={{ ['--progress' as string]: `${file.progress}%` }}
+                    ></div>
+                  </div>
+                )}
+                <button className="remove-image-btn" onClick={() => removePendingFile(file.id)}>×</button>
+              </div>
+            ))}
+          </div>
+        )}
         <div className="input-bar">
-          <button className="attachment-btn" onClick={() => inputRef.current?.focus()}>
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileChange}
+            style={{ display: 'none' }}
+            multiple
+            accept="image/*,video/*,audio/*"
+          />
+          <button className="attachment-btn" onClick={() => fileInputRef.current?.click()}>
             <svg
               className="icon"
               viewBox="0 0 24 24"
@@ -302,7 +454,7 @@ export default function ChatArea({
           <button
             className={`send-btn ${isLoading ? 'stop' : ''}`}
             onClick={handleSubmit}
-            disabled={!isLoading && !input.trim()}
+            disabled={!isLoading && !input.trim() && !pendingFiles.some(f => f.url)}
           >
             {isLoading ? (
               <div className="stop-icon"></div>
