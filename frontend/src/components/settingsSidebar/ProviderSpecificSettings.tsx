@@ -6,10 +6,11 @@ import type {
   CerebrasSettings,
   GroqSettings,
   GrokSettings,
+  OpenRouterSettings,
   MistralSettings,
 } from '../../types';
 
-type SettingsUnion = DeepSeekSettings | DoubaoSettings | SiliconFlowSettings | CerebrasSettings | GroqSettings | GrokSettings | MistralSettings;
+type SettingsUnion = DeepSeekSettings | DoubaoSettings | SiliconFlowSettings | CerebrasSettings | GroqSettings | GrokSettings | OpenRouterSettings | MistralSettings;
 
 type HandleChange = (field: string, value: unknown) => void;
 
@@ -31,18 +32,74 @@ const ProviderSpecificSettings: React.FC<ProviderSpecificSettingsProps> = ({
   const isCerebras = provider === 'cerebras';
   const isGroq = provider === 'groq';
   const isGrok = provider === 'grok';
+  const isOpenRouter = provider === 'openrouter';
   const isMistral = provider === 'mistral';
 
   const doubaoSettings = settings as DoubaoSettings;
   const siliconflowSettings = settings as SiliconFlowSettings;
   const cerebrasSettings = settings as CerebrasSettings;
   const groqSettings = settings as GroqSettings;
+  const openrouterSettings = settings as OpenRouterSettings;
   const mistralSettings = settings as MistralSettings;
 
-  if (!isDoubao && !isSiliconFlow && !isCerebras && !isGroq && !isGrok && !isMistral) return null;
+  if (!isDoubao && !isSiliconFlow && !isCerebras && !isGroq && !isGrok && !isOpenRouter && !isMistral) return null;
 
   return (
     <>
+      {isOpenRouter && (
+        <>
+          <div className="setting-group">
+            <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>
+              Transforms
+            </label>
+            <input
+              type="text"
+              placeholder="e.g. middle-out"
+              value={openrouterSettings.transforms || ''}
+              onChange={(e) => handleChange('transforms', e.target.value)}
+              style={{ width: '100%', padding: '8px', border: '1px solid #E5E7EB', borderRadius: '4px' }}
+            />
+            <p style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+              Comma-separated list of transforms to apply.
+            </p>
+          </div>
+
+          <div className="setting-group">
+            <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>
+              Fallback Models
+            </label>
+            <input
+              type="text"
+              placeholder="e.g. gpt-4o, claude-3-opus"
+              value={openrouterSettings.models || ''}
+              onChange={(e) => handleChange('models', e.target.value)}
+              style={{ width: '100%', padding: '8px', border: '1px solid #E5E7EB', borderRadius: '4px' }}
+            />
+            <p style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+              Comma-separated list of models to use as fallbacks.
+            </p>
+          </div>
+
+          <div className="setting-group">
+            <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>
+              Routing Preference
+            </label>
+            <select
+              value={openrouterSettings.route || ''}
+              onChange={(e) => handleChange('route', e.target.value || undefined)}
+              style={{ width: '100%', padding: '8px', border: '1px solid #E5E7EB', borderRadius: '4px', fontSize: '14px' }}
+            >
+              <option value="">Default</option>
+              <option value="fallback">Fallback</option>
+              <option value="sort">Sort</option>
+            </select>
+            <p style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+              Specify routing behavior for this request.
+            </p>
+          </div>
+        </>
+      )}
+
       {isGrok && (
         <div className="setting-group">
           <p style={{ fontSize: '13px', color: '#6B7280', fontStyle: 'italic' }}>

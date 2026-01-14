@@ -6,10 +6,11 @@ import type {
   CerebrasSettings,
   GroqSettings,
   GrokSettings,
+  OpenRouterSettings,
   MistralSettings,
 } from '../../types';
 
-type SettingsUnion = DeepSeekSettings | DoubaoSettings | SiliconFlowSettings | CerebrasSettings | GroqSettings | GrokSettings | MistralSettings;
+type SettingsUnion = DeepSeekSettings | DoubaoSettings | SiliconFlowSettings | CerebrasSettings | GroqSettings | GrokSettings | OpenRouterSettings | MistralSettings;
 
 type HandleChange = (field: string, value: unknown) => void;
 

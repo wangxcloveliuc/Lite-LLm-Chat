@@ -4,7 +4,7 @@ import Header from './components/Header';
 import ChatArea from './components/ChatArea';
 import SettingsSidebar from './components/SettingsSidebar';
 import { apiClient } from './api/apiClient';
-import type { Provider, Model, Session, Message, DeepSeekSettings, DoubaoSettings, SiliconFlowSettings, CerebrasSettings, GroqSettings, GrokSettings, MistralSettings, ChatRequest } from './types';
+import type { Provider, Model, Session, Message, DeepSeekSettings, DoubaoSettings, SiliconFlowSettings, CerebrasSettings, GroqSettings, GrokSettings, OpenRouterSettings, MistralSettings, ChatRequest } from './types';
 import './App.css';
 
 function App() {
@@ -89,6 +89,19 @@ function App() {
     include_reasoning: true,
     reasoning_effort: 'default',
     max_completion_tokens: undefined,
+  });
+  const [openrouterSettings, setOpenrouterSettings] = useState<OpenRouterSettings>({
+    frequency_penalty: 0,
+    max_tokens: undefined,
+    presence_penalty: 0,
+    temperature: 1,
+    top_p: 1,
+    stop: '',
+    system_prompt: '',
+    transforms: '',
+    models: '',
+    route: undefined,
+    include_reasoning: undefined,
   });
   const [grokSettings, setGrokSettings] = useState<GrokSettings>({
     frequency_penalty: 0,
@@ -281,6 +294,11 @@ function App() {
         ...grokSettings,
         stop: grokSettings.stop ? grokSettings.stop.split(',').map((s) => s.trim()) : undefined,
       };
+    } else if (selectedProvider === 'openrouter') {
+      currentSettings = {
+        ...openrouterSettings,
+        stop: openrouterSettings.stop ? openrouterSettings.stop.split(',').map((s) => s.trim()) : undefined,
+      };
     } else if (selectedProvider === 'mistral') {
       currentSettings = {
         ...mistralSettings,
@@ -329,6 +347,10 @@ function App() {
         thinking_budget: currentSettings.thinking_budget,
         min_p: currentSettings.min_p,
         top_k: currentSettings.top_k,
+        // OpenRouter-specific
+        transforms: (currentSettings as OpenRouterSettings).transforms ? (currentSettings as OpenRouterSettings).transforms?.split(',').map(s => s.trim()) : undefined,
+        models: (currentSettings as OpenRouterSettings).models ? (currentSettings as OpenRouterSettings).models?.split(',').map(s => s.trim()) : undefined,
+        route: (currentSettings as OpenRouterSettings).route,
       };
 
       for await (const chunk of apiClient.chatStream(request, controller.signal)) {
@@ -523,6 +545,7 @@ function App() {
           selectedProvider === 'cerebras' ? cerebrasSettings : 
           selectedProvider === 'groq' ? groqSettings : 
           selectedProvider === 'grok' ? grokSettings : 
+          selectedProvider === 'openrouter' ? openrouterSettings : 
           selectedProvider === 'mistral' ? mistralSettings : 
           deepseekSettings
         }
@@ -537,6 +560,8 @@ function App() {
             setGroqSettings(newSettings as GroqSettings);
           } else if (selectedProvider === 'grok') {
             setGrokSettings(newSettings as GrokSettings);
+          } else if (selectedProvider === 'openrouter') {
+            setOpenrouterSettings(newSettings as OpenRouterSettings);
           } else if (selectedProvider === 'mistral') {
             setMistralSettings(newSettings as MistralSettings);
           } else {

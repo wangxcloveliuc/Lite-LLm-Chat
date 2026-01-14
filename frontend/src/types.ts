@@ -88,6 +88,13 @@ export interface GroqSettings extends DeepSeekSettings {
 export interface GrokSettings extends DeepSeekSettings {
 }
 
+export interface OpenRouterSettings extends DeepSeekSettings {
+  transforms?: string;
+  models?: string;
+  route?: 'fallback' | 'sort';
+  include_reasoning?: boolean;
+}
+
 export interface MistralSettings {
   temperature: number;
   top_p: number;
@@ -138,6 +145,10 @@ export interface ChatRequest {
   // Mistral-specific settings
   safe_prompt?: boolean;
   random_seed?: number;
+  // OpenRouter-specific
+  transforms?: string[];
+  models?: string[];
+  route?: string;
 }
 
 export interface StreamChunk {

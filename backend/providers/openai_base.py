@@ -188,8 +188,20 @@ class OpenAICompatibleClient(BaseClient):
             extended_keys = [
                 "thinking", "reasoning_effort", "disable_reasoning", "reasoning_format", 
                 "include_reasoning", "max_completion_tokens", "enable_thinking", 
-                "thinking_budget", "min_p", "top_k"
+                "thinking_budget", "min_p", "top_k",
+                # OpenRouter-specific
+                "transforms", "models", "route"
             ]
+
+            # For OpenRouter, we might want to keep some of these in extra_body
+            or_keys = ["transforms", "models", "route"]
+            _extra_body = extra_body.copy() if extra_body else {}
+            for key in or_keys:
+                if key in sanitized_kwargs:
+                    _extra_body[key] = sanitized_kwargs.pop(key)
+            
+            curr_extra_body = _extra_body if _extra_body else extra_body
+
             for key in extended_keys:
                 sanitized_kwargs.pop(key, None)
 
@@ -223,7 +235,7 @@ class OpenAICompatibleClient(BaseClient):
                 temperature=temperature,
                 max_tokens=max_tokens,
                 stream=False,
-                extra_body=extra_body,
+                extra_body=curr_extra_body,
                 **sanitized_kwargs,
             )
 
@@ -256,8 +268,20 @@ class OpenAICompatibleClient(BaseClient):
             extended_keys = [
                 "thinking", "reasoning_effort", "disable_reasoning", "reasoning_format", 
                 "include_reasoning", "max_completion_tokens", "enable_thinking", 
-                "thinking_budget", "min_p", "top_k"
+                "thinking_budget", "min_p", "top_k",
+                # OpenRouter-specific
+                "transforms", "models", "route"
             ]
+
+            # For OpenRouter, we might want to keep some of these in extra_body
+            or_keys = ["transforms", "models", "route"]
+            _extra_body = extra_body.copy() if extra_body else {}
+            for key in or_keys:
+                if key in sanitized_kwargs:
+                    _extra_body[key] = sanitized_kwargs.pop(key)
+            
+            curr_extra_body = _extra_body if _extra_body else extra_body
+
             for key in extended_keys:
                 sanitized_kwargs.pop(key, None)
 
@@ -288,7 +312,7 @@ class OpenAICompatibleClient(BaseClient):
                 temperature=temperature,
                 max_tokens=max_tokens,
                 stream=True,
-                extra_body=extra_body,
+                extra_body=curr_extra_body,
                 **sanitized_kwargs,
             )
 
