@@ -105,8 +105,7 @@ export interface GroqSettings extends DeepSeekSettings {
   max_completion_tokens?: number;
 }
 
-export interface GrokSettings extends DeepSeekSettings {
-}
+export type GrokSettings = DeepSeekSettings;
 
 export interface OpenRouterSettings extends DeepSeekSettings {
   transforms?: string;
@@ -201,3 +200,27 @@ export interface StreamChunk {
   error?: string;
   done?: boolean;
 }
+
+export type SettingsUnion =
+  | DeepSeekSettings
+  | DoubaoSettings
+  | DoubaoSeedreamSettings
+  | DoubaoSeedanceSettings
+  | SiliconFlowSettings
+  | CerebrasSettings
+  | GroqSettings
+  | GrokSettings
+  | OpenRouterSettings
+  | MistralSettings
+  | GeminiSettings;
+
+export type CommonSettingsUnion =
+  | DeepSeekSettings
+  | DoubaoSettings
+  | SiliconFlowSettings
+  | CerebrasSettings
+  | GroqSettings
+  | GrokSettings
+  | OpenRouterSettings
+  | MistralSettings
+  | GeminiSettings;

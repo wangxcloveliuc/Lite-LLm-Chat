@@ -1,11 +1,9 @@
 import React, { useRef } from 'react';
-import type { DeepSeekSettings, DoubaoSettings, DoubaoSeedreamSettings, SiliconFlowSettings, CerebrasSettings, GroqSettings, GrokSettings, OpenRouterSettings, MistralSettings, GeminiSettings } from '../types';
+import type { DeepSeekSettings, SettingsUnion, CommonSettingsUnion } from '../types';
 import { useSidebarDismiss } from './settingsSidebar/useSidebarDismiss';
 import ProviderSpecificSettings from './settingsSidebar/ProviderSpecificSettings';
 import VisionSettingsSection from './settingsSidebar/VisionSettingsSection';
 import CommonSettingsSection from './settingsSidebar/CommonSettingsSection';
-
-type SettingsUnion = DeepSeekSettings | DoubaoSettings | DoubaoSeedreamSettings | SiliconFlowSettings | CerebrasSettings | GroqSettings | GrokSettings | OpenRouterSettings | MistralSettings | GeminiSettings;
 
 interface SettingsSidebarProps {
   isOpen: boolean;
@@ -84,7 +82,7 @@ const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
               <VisionSettingsSection settings={deepseekSettings} handleChange={handleChange} />
             )}
             <CommonSettingsSection 
-              settings={settings} 
+              settings={settings as CommonSettingsUnion} 
               deepseekSettings={deepseekSettings} 
               isCerebras={isCerebras} 
               modelId={modelId}
