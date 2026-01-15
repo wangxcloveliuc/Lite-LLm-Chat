@@ -1,0 +1,114 @@
+/* Input Container */
+.input-container {
+  width: 100%;
+  max-width: 780px;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, calc(-50% - 50px));
+}
+
+.input-container.chat-active {
+  position: relative;
+  top: auto;
+  left: auto;
+  transform: none;
+  padding: 20px 0;
+  margin: 0 auto;
+}
+
+.input-bar {
+  display: flex;
+  align-items: center;
+  background-color: #FFFFFF;
+  border: 1px solid #E5E7EB;
+  border-radius: 24px;
+  padding: 12px 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transition: all 0.2s ease;
+  gap: 12px;
+}
+
+.input-bar:focus-within {
+  border-color: #3B82F6;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+}
+
+.attachment-btn,
+.send-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 8px; /* Changed to match prototype buttons */
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.attachment-btn:hover {
+  background-color: #F3F4F6;
+}
+
+.send-btn {
+  background-color: #000000;
+  color: #FFFFFF;
+  width: 32px;
+  height: 32px;
+}
+
+.send-btn.stop {
+  background-color: #374151; /* Dark grey */
+}
+
+.send-btn.stop:hover {
+  background-color: #1f2937;
+}
+
+.stop-icon {
+  width: 10px;
+  height: 10px;
+  background-color: #ffffff;
+  border-radius: 1px;
+}
+
+.send-btn:hover:not(:disabled) {
+  background-color: #374151;
+}
+
+.send-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.attachment-btn .icon {
+  width: 20px;
+  height: 20px;
+  color: #6B7280;
+}
+
+.send-btn .icon {
+  width: 18px;
+  height: 18px;
+}
+
+.text-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 16px;
+  font-weight: 400;
+  color: #000000;
+  background: transparent;
+  padding: 4px 0;
+}
+
+.text-input::placeholder {
+  color: #9CA3AF;
+}
+
+.text-input:disabled {
+  opacity: 0.6;
+}

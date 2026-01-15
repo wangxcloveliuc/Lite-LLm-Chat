@@ -1,0 +1,80 @@
+/* Context Menu */
+.context-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 1001;
+  background-color: #FFFFFF;
+  border-radius: 12px;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.2);
+  padding: 6px;
+  min-width: 160px;
+  margin-top: 4px;
+  display: flex;
+  flex-direction: column;
+}
+
+.menu-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: none;
+  background: none;
+  width: 100%;
+  cursor: pointer;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 400;
+  color: #374151;
+  transition: background-color 0.2s ease;
+}
+
+.menu-option:hover {
+  background-color: #F3F4F6;
+}
+
+.menu-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  order: 0;
+}
+
+.menu-option span {
+  order: 1;
+}
+
+.menu-divider {
+  height: 1px;
+  background-color: #F3F4F6;
+  margin: 6px 0;
+}
+
+.menu-option.delete {
+  color: #EF4444;
+}
+
+.menu-option.delete:hover {
+  background-color: #FEF2F2;
+}
+
+/* Rename Form */
+.rename-form {
+  padding: 0;
+  width: 100%;
+}
+
+.rename-input {
+  width: 100%;
+  padding: 12px 12px 12px 8px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  outline: none;
+  background-color: #F3F4F6;
+  color: #374151;
+  height: 44px;
+  box-sizing: border-box;
+}

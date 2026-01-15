@@ -1,0 +1,28 @@
+/* Settings Sidebar */
+.settings-sidebar {
+  width: 320px;
+  background-color: #F8F9FA;
+  border-left: 1px solid #E5E7EB;
+  display: flex;
+  flex-direction: column;
+  padding: 16px 0;
+  overflow-y: auto;
+  animation: slide-in-right 0.3s ease-out;
+}
+
+@keyframes slide-in-right {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.setting-group input[type="range"] {
+  accent-color: #2563EB;
+}
+
+.close-button:hover {
+  background-color: #E5E7EB !important;
+}
