@@ -503,23 +503,25 @@ const ProviderSpecificSettings: React.FC<ProviderSpecificSettingsProps> = ({
             </p>
           </div>
 
-          <div className="setting-group">
-            <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>
-              Reasoning Effort
-            </label>
-            <select
-              value={doubaoSettings.reasoning_effort || 'medium'}
-              onChange={(e) => handleChange('reasoning_effort', e.target.value)}
-              style={{ width: '100%', padding: '8px', border: '1px solid #E5E7EB', borderRadius: '4px', fontSize: '14px' }}
-            >
-              <option value="low">Low</option>
-              <option value="medium">Medium</option>
-              <option value="high">High</option>
-            </select>
-            <p style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
-              Adjust the depth of reasoning process.
-            </p>
-          </div>
+          {!modelId.toLowerCase().includes('seed-code-preview') && (
+            <div className="setting-group">
+              <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>
+                Reasoning Effort
+              </label>
+              <select
+                value={doubaoSettings.reasoning_effort || 'medium'}
+                onChange={(e) => handleChange('reasoning_effort', e.target.value)}
+                style={{ width: '100%', padding: '8px', border: '1px solid #E5E7EB', borderRadius: '4px', fontSize: '14px' }}
+              >
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+              </select>
+              <p style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+                Adjust the depth of reasoning process.
+              </p>
+            </div>
+          )}
 
           <div className="setting-group">
             <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>

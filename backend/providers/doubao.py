@@ -21,6 +21,7 @@ class DoubaoProvider(BaseLLMProvider):
             "doubao-seed-1-6-flash-250828",
             "doubao-seed-1-6-lite-251015",
             "doubao-seed-1-6-251015",
+            "doubao-seed-code-preview-251028",
             "doubao-seed-1-8-251228",
             "deepseek-r1-250528",
             "deepseek-v3-250324",

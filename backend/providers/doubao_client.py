@@ -129,8 +129,13 @@ class DoubaoClient(BaseClient):
         """Check if the model is a Seedance video generation model."""
         return "seedance" in model.lower()
 
+    def _supports_reasoning_effort(self, model: str) -> bool:
+        """Check if the model supports reasoning_effort parameter."""
+        return "seed-code-preview" not in model.lower()
+
     def _prepare_chat_request(
         self,
+        model: str,
         messages: List[Dict],
         kwargs: Dict,
     ) -> Tuple[List[Dict], Dict, Dict]:
@@ -160,7 +165,7 @@ class DoubaoClient(BaseClient):
         elif thinking is False:
             extra_body["thinking"] = {"type": "disabled"}
 
-        if reasoning_effort:
+        if reasoning_effort and self._supports_reasoning_effort(model):
             extra_body["reasoning_effort"] = reasoning_effort
 
         if max_completion_tokens is not None:
@@ -408,7 +413,7 @@ class DoubaoClient(BaseClient):
             return await self._handle_seedance(model, messages, **kwargs)
 
         try:
-            processed_messages, extra_body, kwargs = self._prepare_chat_request(messages, kwargs)
+            processed_messages, extra_body, kwargs = self._prepare_chat_request(model, messages, kwargs)
 
             response = self.client.chat.completions.create(
                 model=model,
@@ -459,7 +464,7 @@ class DoubaoClient(BaseClient):
             return
 
         try:
-            processed_messages, extra_body, kwargs = self._prepare_chat_request(messages, kwargs)
+            processed_messages, extra_body, kwargs = self._prepare_chat_request(model, messages, kwargs)
 
             response = self.client.chat.completions.create(
                 model=model,
