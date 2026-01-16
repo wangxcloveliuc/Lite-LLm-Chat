@@ -233,6 +233,72 @@ const OpenRouterSettingsSection = ({ settings, handleChange }: OpenRouterSetting
         Allow multiple tool calls in a single turn.
       </p>
     </div>
+
+    <div className="setting-group">
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <label style={{ fontSize: '14px', fontWeight: '500', cursor: 'pointer' }}>
+          Image Generation
+        </label>
+        <input
+          type="checkbox"
+          checked={settings.image_generation ?? false}
+          onChange={(e) => handleChange('image_generation', e.target.checked)}
+          style={{ cursor: 'pointer' }}
+        />
+      </div>
+      <p style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+        Adds image output to chat completions (modalities: image + text).
+      </p>
+    </div>
+
+    {settings.image_generation && (
+      <>
+        <div className="setting-group">
+          <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>
+            Aspect Ratio
+          </label>
+          <select
+            value={settings.image_aspect_ratio || ''}
+            onChange={(e) => handleChange('image_aspect_ratio', e.target.value || undefined)}
+            style={{ width: '100%', padding: '8px', border: '1px solid #E5E7EB', borderRadius: '4px', fontSize: '14px' }}
+          >
+            <option value="">Default (1:1)</option>
+            <option value="1:1">1:1 (1024×1024)</option>
+            <option value="2:3">2:3 (832×1248)</option>
+            <option value="3:2">3:2 (1248×832)</option>
+            <option value="3:4">3:4 (864×1184)</option>
+            <option value="4:3">4:3 (1184×864)</option>
+            <option value="4:5">4:5 (896×1152)</option>
+            <option value="5:4">5:4 (1152×896)</option>
+            <option value="9:16">9:16 (768×1344)</option>
+            <option value="16:9">16:9 (1344×768)</option>
+            <option value="21:9">21:9 (1536×672)</option>
+          </select>
+          <p style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+            Use Gemini image-generation models to control output proportions.
+          </p>
+        </div>
+
+        <div className="setting-group">
+          <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>
+            Image Size (Gemini)
+          </label>
+          <select
+            value={settings.image_size || ''}
+            onChange={(e) => handleChange('image_size', e.target.value || undefined)}
+            style={{ width: '100%', padding: '8px', border: '1px solid #E5E7EB', borderRadius: '4px', fontSize: '14px' }}
+          >
+            <option value="">Default (1K)</option>
+            <option value="1K">1K</option>
+            <option value="2K">2K</option>
+            <option value="4K">4K</option>
+          </select>
+          <p style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+            Higher sizes increase resolution for Gemini image models.
+          </p>
+        </div>
+      </>
+    )}
   </>
 );
 

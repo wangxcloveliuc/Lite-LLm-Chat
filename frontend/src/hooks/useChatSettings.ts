@@ -66,6 +66,9 @@ export type ChatRequestSettings = {
   structured_outputs?: boolean;
   parallel_tool_calls?: boolean;
   reasoning_summary?: 'auto' | 'concise' | 'detailed';
+  image_generation?: boolean;
+  image_aspect_ratio?: string;
+  image_size?: '1K' | '2K' | '4K';
 };
 
 type UseChatSettingsParams = {
@@ -227,6 +230,9 @@ const useChatSettings = ({ selectedProvider, selectedModel }: UseChatSettingsPar
     parallel_tool_calls: true,
     reasoning_effort: undefined,
     reasoning_summary: undefined,
+    image_generation: false,
+    image_aspect_ratio: undefined,
+    image_size: undefined,
   });
   const [grokSettings, setGrokSettings] = useState<GrokSettings>({
     frequency_penalty: 0,

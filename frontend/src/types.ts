@@ -126,6 +126,9 @@ export interface OpenRouterSettings extends DeepSeekSettings {
   parallel_tool_calls?: boolean;
   reasoning_effort?: 'xhigh' | 'high' | 'medium' | 'low' | 'minimal' | 'none';
   reasoning_summary?: 'auto' | 'concise' | 'detailed';
+  image_generation?: boolean;
+  image_aspect_ratio?: string;
+  image_size?: '1K' | '2K' | '4K';
 }
 
 export interface GeminiSettings extends DeepSeekSettings {
@@ -197,6 +200,11 @@ export interface ChatRequest {
   structured_outputs?: boolean;
   parallel_tool_calls?: boolean;
   reasoning?: Record<string, unknown>;
+  modalities?: string[];
+  image_config?: {
+    aspect_ratio?: string;
+    image_size?: string;
+  };
   // Gemini-specific
   seed?: number;
   safety_threshold?: string;

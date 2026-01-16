@@ -138,6 +138,8 @@ async def chat_completion(
                 provider_kwargs = _build_provider_kwargs(chat_request)
                 if provider_id != "openrouter":
                     provider_kwargs.pop("reasoning", None)
+                    provider_kwargs.pop("modalities", None)
+                    provider_kwargs.pop("image_config", None)
 
                 stream = provider_client.stream_chat(
                     model=model_id,
@@ -276,6 +278,8 @@ async def chat_completion(
         provider_kwargs = _build_provider_kwargs(chat_request)
         if provider_id != "openrouter":
             provider_kwargs.pop("reasoning", None)
+            provider_kwargs.pop("modalities", None)
+            provider_kwargs.pop("image_config", None)
 
         # Handle Seedream non-streaming if needed (though UI usually uses stream)
         response_content, reasoning_content = await provider_client.chat(

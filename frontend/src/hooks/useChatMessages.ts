@@ -89,6 +89,13 @@ const useChatMessages = ({
               summary: currentSettings.reasoning_summary,
             }
           : undefined;
+      const imageConfig =
+        currentSettings.image_aspect_ratio || currentSettings.image_size
+          ? {
+              aspect_ratio: currentSettings.image_aspect_ratio,
+              image_size: currentSettings.image_size,
+            }
+          : undefined;
 
       try {
         const request: ChatRequest = {
@@ -135,6 +142,8 @@ const useChatMessages = ({
           structured_outputs: currentSettings.structured_outputs,
           parallel_tool_calls: currentSettings.parallel_tool_calls,
           reasoning: reasoningConfig,
+          modalities: currentSettings.image_generation ? ['image', 'text'] : undefined,
+          image_config: imageConfig,
           seed: currentSettings.seed,
           safety_threshold: currentSettings.safety_threshold,
           sequential_image_generation: currentSettings.sequential_image_generation,

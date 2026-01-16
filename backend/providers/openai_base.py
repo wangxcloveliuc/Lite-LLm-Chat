@@ -51,6 +51,27 @@ class OpenAICompatibleClient(BaseClient):
         
         return ""
 
+    def _format_image_markdown(self, images) -> str:
+        """Convert image outputs to markdown for downstream localization/display."""
+        if not images:
+            return ""
+
+        def _extract_url(image_obj) -> str:
+            if isinstance(image_obj, dict):
+                image_url = image_obj.get("image_url") or image_obj.get("imageUrl") or {}
+                if isinstance(image_url, dict):
+                    return image_url.get("url", "") or image_url.get("uri", "")
+                return image_url or ""
+            image_url = getattr(image_obj, "image_url", None) or getattr(image_obj, "imageUrl", None)
+            if isinstance(image_url, dict):
+                return image_url.get("url", "") or image_url.get("uri", "")
+            if image_url:
+                return image_url
+            return getattr(image_obj, "url", "") or ""
+
+        urls = [_extract_url(image) for image in images]
+        return "\n\n".join([f"![image]({url})" for url in urls if url])
+
     def _process_messages(
         self,
         messages: List[Dict],
@@ -192,14 +213,14 @@ class OpenAICompatibleClient(BaseClient):
                 # OpenRouter-specific
                 "transforms", "models", "route", "repetition_penalty", "top_a", "logprobs",
                 "top_logprobs", "response_format", "structured_outputs", "parallel_tool_calls",
-                "reasoning"
+                "reasoning", "modalities", "image_config"
             ]
 
             # For OpenRouter, we might want to keep some of these in extra_body
             or_keys = [
                 "transforms", "models", "route", "repetition_penalty", "top_a", "logprobs",
                 "top_logprobs", "response_format", "structured_outputs", "parallel_tool_calls",
-                "reasoning"
+                "reasoning", "modalities", "image_config"
             ]
             _extra_body = extra_body.copy() if extra_body else {}
             for key in or_keys:
@@ -247,6 +268,9 @@ class OpenAICompatibleClient(BaseClient):
 
             msg = response.choices[0].message
             content = msg.content or ""
+            image_markdown = self._format_image_markdown(getattr(msg, "images", None))
+            if image_markdown:
+                content = f"{content}\n\n{image_markdown}" if content else image_markdown
             reasoning = self._extract_reasoning(msg)
             return content, reasoning
         except Exception as e:
@@ -278,14 +302,14 @@ class OpenAICompatibleClient(BaseClient):
                 # OpenRouter-specific
                 "transforms", "models", "route", "repetition_penalty", "top_a", "logprobs",
                 "top_logprobs", "response_format", "structured_outputs", "parallel_tool_calls",
-                "reasoning"
+                "reasoning", "modalities", "image_config"
             ]
 
             # For OpenRouter, we might want to keep some of these in extra_body
             or_keys = [
                 "transforms", "models", "route", "repetition_penalty", "top_a", "logprobs",
                 "top_logprobs", "response_format", "structured_outputs", "parallel_tool_calls",
-                "reasoning"
+                "reasoning", "modalities", "image_config"
             ]
             _extra_body = extra_body.copy() if extra_body else {}
             for key in or_keys:
@@ -340,6 +364,10 @@ class OpenAICompatibleClient(BaseClient):
                 if getattr(delta, "content", None):
                     content = delta.content
                     yield f"data: {json.dumps({'content': content})}\n\n"
+
+                image_markdown = self._format_image_markdown(getattr(delta, "images", None))
+                if image_markdown:
+                    yield f"data: {json.dumps({'content': image_markdown})}\n\n"
 
             yield f"data: {json.dumps({'done': True})}\n\n"
 

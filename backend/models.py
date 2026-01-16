@@ -148,6 +148,8 @@ class ChatRequest(BaseModel):
     structured_outputs: Optional[bool] = None
     parallel_tool_calls: Optional[bool] = None
     reasoning: Optional[dict] = None
+    modalities: Optional[List[str]] = None
+    image_config: Optional[dict] = None
     # Mistral specific
     safe_prompt: Optional[bool] = None
     random_seed: Optional[int] = None

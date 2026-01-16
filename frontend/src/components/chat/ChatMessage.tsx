@@ -101,15 +101,17 @@ const ChatMessage = ({ message, index, onEdit, onRefresh, onImageClick }: ChatMe
         )}
         {message.images && message.images.length > 0 && (
           <div className="message-images">
-            {message.images.map((url, i) => (
-              <img
-                key={i}
-                src={getFullImageUrl(url)}
-                alt="attachment"
-                className="message-image"
-                onClick={() => onImageClick(getFullImageUrl(url))}
-              />
-            ))}
+            {message.images.map((url, i) =>
+              url ? (
+                <img
+                  key={i}
+                  src={getFullImageUrl(url)}
+                  alt="attachment"
+                  className="message-image"
+                  onClick={() => onImageClick(getFullImageUrl(url))}
+                />
+              ) : null
+            )}
           </div>
         )}
         {message.videos && message.videos.length > 0 && (
@@ -160,6 +162,9 @@ const ChatMessage = ({ message, index, onEdit, onRefresh, onImageClick }: ChatMe
                   );
                 },
                 img({ src, alt }) {
+                  if (!src) {
+                    return null;
+                  }
                   const isVideo = src?.toLowerCase().endsWith('.mp4') || alt === 'video';
                   if (isVideo && src) {
                     return (
@@ -173,10 +178,10 @@ const ChatMessage = ({ message, index, onEdit, onRefresh, onImageClick }: ChatMe
                   }
                   return (
                     <img
-                      src={src ? getFullImageUrl(src) : ''}
+                      src={getFullImageUrl(src)}
                       alt={alt}
                       className="message-markdown-image"
-                      onClick={() => src && onImageClick(getFullImageUrl(src))}
+                      onClick={() => onImageClick(getFullImageUrl(src))}
                       title="Click to view full size"
                     />
                   );

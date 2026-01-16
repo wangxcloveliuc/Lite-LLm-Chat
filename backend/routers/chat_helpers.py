@@ -2,6 +2,7 @@ import json
 import os
 import uuid
 import re
+import base64
 from typing import List, Optional, Tuple, Dict
 
 
@@ -21,6 +22,36 @@ def _ensure_list(data):
 
 async def _save_remote_image(url: str) -> str:
     """Download remote image and save to local uploads directory."""
+    if not url:
+        return url
+
+    if url.startswith("data:image/"):
+        try:
+            header, encoded = url.split(",", 1)
+            if ";base64" not in header:
+                return url
+            mime_type = header.split(":", 1)[1].split(";", 1)[0]
+            ext = ".png"
+            if "jpeg" in mime_type or "jpg" in mime_type:
+                ext = ".jpg"
+            elif "webp" in mime_type:
+                ext = ".webp"
+            elif "gif" in mime_type:
+                ext = ".gif"
+
+            filename = f"{uuid.uuid4()}{ext}"
+            upload_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads")
+            os.makedirs(upload_dir, exist_ok=True)
+
+            filepath = os.path.join(upload_dir, filename)
+            with open(filepath, "wb") as f:
+                f.write(base64.b64decode(encoded))
+
+            return f"/uploads/{filename}"
+        except Exception as e:
+            print(f"Error saving base64 image: {e}")
+            return url
+
     if not url.startswith("http"):
         return url
 
@@ -180,6 +211,20 @@ def _build_provider_kwargs(chat_request):
         provider_kwargs["parallel_tool_calls"] = chat_request.parallel_tool_calls
     if chat_request.reasoning is not None:
         provider_kwargs["reasoning"] = chat_request.reasoning
+    if chat_request.modalities is not None:
+        provider_kwargs["modalities"] = chat_request.modalities
+    if chat_request.image_config is not None:
+        image_config = chat_request.image_config
+        if isinstance(image_config, dict):
+            filtered_config = {k: v for k, v in image_config.items() if v is not None}
+        elif hasattr(image_config, "model_dump"):
+            filtered_config = image_config.model_dump(exclude_none=True)
+        elif hasattr(image_config, "dict"):
+            filtered_config = image_config.dict(exclude_none=True)
+        else:
+            filtered_config = image_config
+        if filtered_config:
+            provider_kwargs["image_config"] = filtered_config
     if chat_request.safe_prompt is not None:
         provider_kwargs["safe_prompt"] = chat_request.safe_prompt
     if chat_request.random_seed is not None:
@@ -237,7 +282,7 @@ def _build_provider_kwargs(chat_request):
 
 
 async def _localize_markdown_images(content: str) -> Tuple[str, List[str]]:
-    img_pattern = r"!\[image\]\((https?://[^\)]+)\)"
+    img_pattern = r"!\[image\]\(([^\)]+)\)"
     matches = re.finditer(img_pattern, content)
 
     found_urls = []
@@ -255,7 +300,7 @@ async def _localize_streaming_content(content_val: str) -> Tuple[str, bool]:
     if "! [image]" not in content_val and "![" not in content_val:
         return content_val, False
 
-    img_pattern = r"!\[image\]\((https?://[^\)]+)\)"
+    img_pattern = r"!\[image\]\(([^\)]+)\)"
     matches = re.finditer(img_pattern, content_val)
     modified = False
     for match in matches:
