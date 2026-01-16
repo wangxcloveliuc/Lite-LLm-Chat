@@ -64,6 +64,10 @@ class Settings(BaseSettings):
     cerebras_api_key: Optional[str] = None
     cerebras_base_url: str = "https://api.cerebras.ai/v1"
 
+    # Nvidia (OpenAI-compatible) API
+    nvidia_api_key: Optional[str] = None
+    nvidia_base_url: str = "https://integrate.api.nvidia.com/v1"
+
     # CORS
     cors_origins: list = ["*"]
 

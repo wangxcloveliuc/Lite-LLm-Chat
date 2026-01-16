@@ -10,9 +10,11 @@ import type {
   OpenRouterSettings,
   MistralSettings,
   GeminiSettings,
+  NvidiaSettings,
 } from '../../types';
 import OpenRouterSettingsSection from './providerSpecific/OpenRouterSettingsSection';
 import GrokSettingsSection from './providerSpecific/GrokSettingsSection';
+import NvidiaSettingsSection from './providerSpecific/NvidiaSettingsSection';
 import MistralSettingsSection from './providerSpecific/MistralSettingsSection';
 import GeminiSettingsSection from './providerSpecific/GeminiSettingsSection';
 import DoubaoSeedanceSettingsSection from './providerSpecific/DoubaoSeedanceSettingsSection';
@@ -42,6 +44,7 @@ const ProviderSpecificSettings: React.FC<ProviderSpecificSettingsProps> = ({
   const isCerebras = provider === 'cerebras';
   const isGroq = provider === 'groq';
   const isGrok = provider === 'grok';
+  const isNvidia = provider === 'nvidia';
   const isOpenRouter = provider === 'openrouter';
   const isMistral = provider === 'mistral';
   const isGemini = provider === 'gemini';
@@ -54,11 +57,12 @@ const ProviderSpecificSettings: React.FC<ProviderSpecificSettingsProps> = ({
   const siliconflowSettings = settings as SiliconFlowSettings;
   const cerebrasSettings = settings as CerebrasSettings;
   const groqSettings = settings as GroqSettings;
+  const nvidiaSettings = settings as NvidiaSettings;
   const openrouterSettings = settings as OpenRouterSettings;
   const mistralSettings = settings as MistralSettings;
   const geminiSettings = settings as GeminiSettings;
 
-  if (!isDoubao && !isSiliconFlow && !isCerebras && !isGroq && !isGrok && !isOpenRouter && !isMistral && !isGemini) return null;
+  if (!isDoubao && !isSiliconFlow && !isCerebras && !isGroq && !isGrok && !isNvidia && !isOpenRouter && !isMistral && !isGemini) return null;
 
   return (
     <>
@@ -67,6 +71,8 @@ const ProviderSpecificSettings: React.FC<ProviderSpecificSettingsProps> = ({
       )}
 
       {isGrok && <GrokSettingsSection />}
+
+      {isNvidia && <NvidiaSettingsSection />}
 
       {isMistral && (
         <MistralSettingsSection settings={mistralSettings} handleChange={handleChange} />

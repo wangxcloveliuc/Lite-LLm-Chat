@@ -34,6 +34,7 @@ const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
   const isCerebras = provider === 'cerebras';
   const isGroq = provider === 'groq';
   const isGrok = provider === 'grok';
+  const isNvidia = provider === 'nvidia';
   const isOpenRouter = provider === 'openrouter';
   const isMistral = provider === 'mistral';
   const isGemini = provider === 'gemini';
@@ -74,11 +75,11 @@ const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
       <div className="settings-content" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
         {isSeedream || isSeedance ? (
           <ProviderSpecificSettings provider={provider} modelId={modelId} settings={settings} handleChange={handleChange} />
-        ) : isDeepSeek || isDoubao || isSiliconFlow || isCerebras || isGroq || isGrok || isOpenRouter || isMistral || isGemini ? (
+        ) : isDeepSeek || isDoubao || isSiliconFlow || isCerebras || isGroq || isGrok || isNvidia || isOpenRouter || isMistral || isGemini ? (
           <>
             <ProviderSpecificSettings provider={provider} modelId={modelId} settings={settings} handleChange={handleChange} />
 
-            {((!isCerebras && !isDeepSeek && !isGroq && !isGrok && !isOpenRouter && !isMistral && !isGemini) || (isGroq && (modelId.toLowerCase().includes('scout') || modelId.toLowerCase().includes('maverick')))) && (
+            {((!isCerebras && !isDeepSeek && !isGroq && !isGrok && !isNvidia && !isOpenRouter && !isMistral && !isGemini) || (isGroq && (modelId.toLowerCase().includes('scout') || modelId.toLowerCase().includes('maverick')))) && (
               <VisionSettingsSection settings={deepseekSettings} handleChange={handleChange} />
             )}
             <CommonSettingsSection 

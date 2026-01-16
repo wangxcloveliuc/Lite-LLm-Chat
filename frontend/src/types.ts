@@ -107,6 +107,8 @@ export interface GroqSettings extends DeepSeekSettings {
 
 export type GrokSettings = DeepSeekSettings;
 
+export type NvidiaSettings = DeepSeekSettings;
+
 export interface OpenRouterSettings extends DeepSeekSettings {
   transforms?: string;
   models?: string;
@@ -210,6 +212,7 @@ export type SettingsUnion =
   | CerebrasSettings
   | GroqSettings
   | GrokSettings
+  | NvidiaSettings
   | OpenRouterSettings
   | MistralSettings
   | GeminiSettings;
@@ -221,6 +224,7 @@ export type CommonSettingsUnion =
   | CerebrasSettings
   | GroqSettings
   | GrokSettings
+  | NvidiaSettings
   | OpenRouterSettings
   | MistralSettings
   | GeminiSettings;

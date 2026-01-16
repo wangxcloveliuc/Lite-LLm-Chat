@@ -8,6 +8,7 @@ import type {
   CerebrasSettings,
   GroqSettings,
   GrokSettings,
+  NvidiaSettings,
   OpenRouterSettings,
   GeminiSettings,
   MistralSettings,
@@ -74,6 +75,7 @@ type UseChatSettingsReturn = {
     | CerebrasSettings
     | GroqSettings
     | GrokSettings
+    | NvidiaSettings
     | OpenRouterSettings
     | GeminiSettings
     | MistralSettings;
@@ -180,6 +182,20 @@ const useChatSettings = ({ selectedProvider, selectedModel }: UseChatSettingsPar
     reasoning_effort: 'default',
     max_completion_tokens: undefined,
   });
+  const [nvidiaSettings, setNvidiaSettings] = useState<NvidiaSettings>({
+    frequency_penalty: 0,
+    max_tokens: undefined,
+    presence_penalty: 0,
+    temperature: 1,
+    top_p: 1,
+    stop: '',
+    system_prompt: '',
+    image_detail: 'auto',
+    image_pixel_limit: undefined,
+    fps: undefined,
+    video_detail: 'auto',
+    max_frames: undefined,
+  });
   const [openrouterSettings, setOpenrouterSettings] = useState<OpenRouterSettings>({
     frequency_penalty: 0,
     max_tokens: undefined,
@@ -257,6 +273,9 @@ const useChatSettings = ({ selectedProvider, selectedModel }: UseChatSettingsPar
     if (selectedProvider === 'grok') {
       return { ...grokSettings, stop: parseStop(grokSettings.stop) };
     }
+    if (selectedProvider === 'nvidia') {
+      return { ...nvidiaSettings, stop: parseStop(nvidiaSettings.stop) };
+    }
     if (selectedProvider === 'openrouter') {
       return { ...openrouterSettings, stop: parseStop(openrouterSettings.stop) };
     }
@@ -276,6 +295,7 @@ const useChatSettings = ({ selectedProvider, selectedModel }: UseChatSettingsPar
     geminiSettings,
     grokSettings,
     groqSettings,
+    nvidiaSettings,
     mistralSettings,
     openrouterSettings,
     selectedModel,
@@ -305,6 +325,9 @@ const useChatSettings = ({ selectedProvider, selectedModel }: UseChatSettingsPar
     if (selectedProvider === 'grok') {
       return grokSettings;
     }
+    if (selectedProvider === 'nvidia') {
+      return nvidiaSettings;
+    }
     if (selectedProvider === 'openrouter') {
       return openrouterSettings;
     }
@@ -323,8 +346,7 @@ const useChatSettings = ({ selectedProvider, selectedModel }: UseChatSettingsPar
     doubaoSettings,
     geminiSettings,
     grokSettings,
-    groqSettings,
-    mistralSettings,
+    groqSettings,    nvidiaSettings,    mistralSettings,
     openrouterSettings,
     selectedModel,
     selectedProvider,
@@ -347,6 +369,8 @@ const useChatSettings = ({ selectedProvider, selectedModel }: UseChatSettingsPar
         setGroqSettings(newSettings as GroqSettings);
       } else if (selectedProvider === 'grok') {
         setGrokSettings(newSettings as GrokSettings);
+      } else if (selectedProvider === 'nvidia') {
+        setNvidiaSettings(newSettings as NvidiaSettings);
       } else if (selectedProvider === 'openrouter') {
         setOpenrouterSettings(newSettings as OpenRouterSettings);
       } else if (selectedProvider === 'mistral') {
