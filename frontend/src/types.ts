@@ -114,6 +114,15 @@ export interface OpenRouterSettings extends DeepSeekSettings {
   models?: string;
   route?: 'fallback' | 'sort';
   include_reasoning?: boolean;
+  repetition_penalty?: number;
+  top_a?: number;
+  logprobs?: boolean;
+  top_logprobs?: number;
+  response_format?: string;
+  structured_outputs?: boolean;
+  parallel_tool_calls?: boolean;
+  reasoning_effort?: 'xhigh' | 'high' | 'medium' | 'low' | 'minimal' | 'none';
+  reasoning_summary?: 'auto' | 'concise' | 'detailed';
 }
 
 export interface GeminiSettings extends DeepSeekSettings {
@@ -177,6 +186,14 @@ export interface ChatRequest {
   transforms?: string[];
   models?: string[];
   route?: string;
+  repetition_penalty?: number;
+  top_a?: number;
+  logprobs?: boolean;
+  top_logprobs?: number;
+  response_format?: Record<string, unknown>;
+  structured_outputs?: boolean;
+  parallel_tool_calls?: boolean;
+  reasoning?: Record<string, unknown>;
   // Gemini-specific
   seed?: number;
   safety_threshold?: string;

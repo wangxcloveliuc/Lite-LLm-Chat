@@ -107,6 +107,8 @@ async def list_models(provider: Optional[str] = None) -> List[Dict[str, object]]
             return []
         models = await p.list_models()
         _set_cached_models(provider, models)
+        print( f"[provider_registry] Fetched and cached models for provider '{provider}'")
+        print(models)
         return models
 
     all_models: List[Dict[str, object]] = []

@@ -58,6 +58,14 @@ export type ChatRequestSettings = {
   transforms?: string;
   models?: string;
   route?: string;
+  repetition_penalty?: number;
+  top_a?: number;
+  logprobs?: boolean;
+  top_logprobs?: number;
+  response_format?: string;
+  structured_outputs?: boolean;
+  parallel_tool_calls?: boolean;
+  reasoning_summary?: 'auto' | 'concise' | 'detailed';
 };
 
 type UseChatSettingsParams = {
@@ -208,6 +216,15 @@ const useChatSettings = ({ selectedProvider, selectedModel }: UseChatSettingsPar
     models: '',
     route: undefined,
     include_reasoning: undefined,
+    repetition_penalty: undefined,
+    top_a: undefined,
+    logprobs: false,
+    top_logprobs: undefined,
+    response_format: '',
+    structured_outputs: false,
+    parallel_tool_calls: true,
+    reasoning_effort: undefined,
+    reasoning_summary: undefined,
   });
   const [grokSettings, setGrokSettings] = useState<GrokSettings>({
     frequency_penalty: 0,

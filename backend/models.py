@@ -136,6 +136,18 @@ class ChatRequest(BaseModel):
     thinking_budget: Optional[int] = Field(default=None, ge=128, le=32768)
     min_p: Optional[float] = Field(default=None, ge=0.0, le=1.0)
     top_k: Optional[float] = Field(default=None)
+    # OpenRouter-specific
+    transforms: Optional[List[str]] = None
+    models: Optional[List[str]] = None
+    route: Optional[str] = None
+    repetition_penalty: Optional[float] = Field(default=None, ge=0.0, le=2.0)
+    top_a: Optional[float] = Field(default=None, ge=0.0, le=1.0)
+    logprobs: Optional[bool] = None
+    top_logprobs: Optional[int] = Field(default=None, ge=0, le=20)
+    response_format: Optional[dict] = None
+    structured_outputs: Optional[bool] = None
+    parallel_tool_calls: Optional[bool] = None
+    reasoning: Optional[dict] = None
     # Mistral specific
     safe_prompt: Optional[bool] = None
     random_seed: Optional[int] = None

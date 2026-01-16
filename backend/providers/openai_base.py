@@ -190,11 +190,17 @@ class OpenAICompatibleClient(BaseClient):
                 "include_reasoning", "max_completion_tokens", "enable_thinking", 
                 "thinking_budget", "min_p", "top_k",
                 # OpenRouter-specific
-                "transforms", "models", "route"
+                "transforms", "models", "route", "repetition_penalty", "top_a", "logprobs",
+                "top_logprobs", "response_format", "structured_outputs", "parallel_tool_calls",
+                "reasoning"
             ]
 
             # For OpenRouter, we might want to keep some of these in extra_body
-            or_keys = ["transforms", "models", "route"]
+            or_keys = [
+                "transforms", "models", "route", "repetition_penalty", "top_a", "logprobs",
+                "top_logprobs", "response_format", "structured_outputs", "parallel_tool_calls",
+                "reasoning"
+            ]
             _extra_body = extra_body.copy() if extra_body else {}
             for key in or_keys:
                 if key in sanitized_kwargs:
@@ -270,11 +276,17 @@ class OpenAICompatibleClient(BaseClient):
                 "include_reasoning", "max_completion_tokens", "enable_thinking", 
                 "thinking_budget", "min_p", "top_k",
                 # OpenRouter-specific
-                "transforms", "models", "route"
+                "transforms", "models", "route", "repetition_penalty", "top_a", "logprobs",
+                "top_logprobs", "response_format", "structured_outputs", "parallel_tool_calls",
+                "reasoning"
             ]
 
             # For OpenRouter, we might want to keep some of these in extra_body
-            or_keys = ["transforms", "models", "route"]
+            or_keys = [
+                "transforms", "models", "route", "repetition_penalty", "top_a", "logprobs",
+                "top_logprobs", "response_format", "structured_outputs", "parallel_tool_calls",
+                "reasoning"
+            ]
             _extra_body = extra_body.copy() if extra_body else {}
             for key in or_keys:
                 if key in sanitized_kwargs:

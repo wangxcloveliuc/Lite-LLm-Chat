@@ -105,6 +105,28 @@ def _build_provider_kwargs(chat_request):
         provider_kwargs["min_p"] = chat_request.min_p
     if chat_request.top_k is not None:
         provider_kwargs["top_k"] = chat_request.top_k
+    if chat_request.transforms is not None:
+        provider_kwargs["transforms"] = chat_request.transforms
+    if chat_request.models is not None:
+        provider_kwargs["models"] = chat_request.models
+    if chat_request.route is not None:
+        provider_kwargs["route"] = chat_request.route
+    if chat_request.repetition_penalty is not None:
+        provider_kwargs["repetition_penalty"] = chat_request.repetition_penalty
+    if chat_request.top_a is not None:
+        provider_kwargs["top_a"] = chat_request.top_a
+    if chat_request.logprobs is not None:
+        provider_kwargs["logprobs"] = chat_request.logprobs
+    if chat_request.top_logprobs is not None:
+        provider_kwargs["top_logprobs"] = chat_request.top_logprobs
+    if chat_request.response_format is not None:
+        provider_kwargs["response_format"] = chat_request.response_format
+    if chat_request.structured_outputs is not None:
+        provider_kwargs["structured_outputs"] = chat_request.structured_outputs
+    if chat_request.parallel_tool_calls is not None:
+        provider_kwargs["parallel_tool_calls"] = chat_request.parallel_tool_calls
+    if chat_request.reasoning is not None:
+        provider_kwargs["reasoning"] = chat_request.reasoning
     if chat_request.safe_prompt is not None:
         provider_kwargs["safe_prompt"] = chat_request.safe_prompt
     if chat_request.random_seed is not None:

@@ -74,6 +74,21 @@ const useChatMessages = ({
 
       let newSessionId = currentSessionId;
       const currentSettings = getCurrentSettings();
+      let parsedResponseFormat: Record<string, unknown> | undefined;
+      if (currentSettings.response_format) {
+        try {
+          parsedResponseFormat = JSON.parse(currentSettings.response_format);
+        } catch (error) {
+          console.warn('Invalid response_format JSON. Skipping.', error);
+        }
+      }
+      const reasoningConfig: Record<string, unknown> | undefined =
+        currentSettings.reasoning_effort || currentSettings.reasoning_summary
+          ? {
+              effort: currentSettings.reasoning_effort,
+              summary: currentSettings.reasoning_summary,
+            }
+          : undefined;
 
       try {
         const request: ChatRequest = {
@@ -112,6 +127,14 @@ const useChatMessages = ({
             : undefined,
           models: currentSettings.models ? currentSettings.models.split(',').map((s) => s.trim()) : undefined,
           route: currentSettings.route,
+          repetition_penalty: currentSettings.repetition_penalty,
+          top_a: currentSettings.top_a,
+          logprobs: currentSettings.logprobs,
+          top_logprobs: currentSettings.top_logprobs,
+          response_format: parsedResponseFormat,
+          structured_outputs: currentSettings.structured_outputs,
+          parallel_tool_calls: currentSettings.parallel_tool_calls,
+          reasoning: reasoningConfig,
           seed: currentSettings.seed,
           safety_threshold: currentSettings.safety_threshold,
           sequential_image_generation: currentSettings.sequential_image_generation,
