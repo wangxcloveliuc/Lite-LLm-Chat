@@ -2,7 +2,8 @@ import json
 import os
 import uuid
 import re
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Dict
+
 
 import httpx
 
@@ -73,6 +74,58 @@ def _format_api_content(
         for audio_url in audios:
             parts.append({"type": "audio_url", "audio_url": {"url": audio_url}})
     return parts
+
+
+def _extract_think_tag(content: str) -> Tuple[str, Optional[str]]:
+    if not content:
+        return content, None
+
+    pattern = re.compile(r"<think>(.*?)</think>", re.IGNORECASE | re.DOTALL)
+    matches = pattern.findall(content)
+    if not matches:
+        return content, None
+
+    thinking_text = "\n".join([m.strip() for m in matches if m and m.strip()]) or None
+    cleaned = pattern.sub("", content)
+    cleaned = cleaned.strip()
+    return cleaned, thinking_text
+
+
+def _strip_think_stream(content: str, state: Dict) -> Tuple[str, Optional[str]]:
+    text = f"{state.get('pending', '')}{content or ''}"
+    state["pending"] = ""
+    in_think = state.get("in_think", False)
+    output_parts: List[str] = []
+    reasoning_parts: List[str] = []
+    i = 0
+    while i < len(text):
+        if in_think:
+            close_idx = text.find("</think>", i)
+            if close_idx == -1:
+                tail_start = max(i, len(text) - 8)
+                reasoning_parts.append(text[i:tail_start])
+                state["pending"] = text[tail_start:]
+                state["in_think"] = True
+                return "".join(output_parts), "".join(reasoning_parts) or None
+            reasoning_parts.append(text[i:close_idx])
+            i = close_idx + 8
+            in_think = False
+            state["in_think"] = False
+        else:
+            open_idx = text.find("<think>", i)
+            if open_idx == -1:
+                tail_start = max(i, len(text) - 7)
+                output_parts.append(text[i:tail_start])
+                state["pending"] = text[tail_start:]
+                state["in_think"] = False
+                return "".join(output_parts), "".join(reasoning_parts) or None
+            output_parts.append(text[i:open_idx])
+            i = open_idx + 7
+            in_think = True
+            state["in_think"] = True
+    state["pending"] = ""
+    state["in_think"] = in_think
+    return "".join(output_parts), "".join(reasoning_parts) or None
 
 
 def _build_provider_kwargs(chat_request):

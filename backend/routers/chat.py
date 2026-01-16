@@ -13,9 +13,11 @@ from provider_registry import get_provider
 from .chat_helpers import (
     _build_provider_kwargs,
     _ensure_list,
+    _extract_think_tag,
     _format_api_content,
     _localize_markdown_images,
     _localize_streaming_content,
+    _strip_think_stream,
 )
 
 
@@ -131,8 +133,11 @@ async def chat_completion(
             full_response = ""
             full_reasoning = ""
             failed = False
+            think_state = {"pending": "", "in_think": False}
             try:
                 provider_kwargs = _build_provider_kwargs(chat_request)
+                if provider_id != "openrouter":
+                    provider_kwargs.pop("reasoning", None)
 
                 stream = provider_client.stream_chat(
                     model=model_id,
@@ -162,6 +167,8 @@ async def chat_completion(
 
                         try:
                             chunk_data = json.loads(chunk[6:])
+                            extra_chunk = None
+                            skip_chunk = False
                             if "content" in chunk_data:
                                 content_val = chunk_data["content"]
                                 content_val, modified = await _localize_streaming_content(content_val)
@@ -169,9 +176,24 @@ async def chat_completion(
                                     chunk_data["content"] = content_val
                                     chunk = f"data: {json.dumps(chunk_data)}\n\n"
 
-                                full_response += content_val
+                                content_val, think_text = _strip_think_stream(content_val, think_state)
+                                reasoning_delta = ""
+                                if "reasoning" in chunk_data:
+                                    reasoning_delta += chunk_data.pop("reasoning")
+                                if think_text:
+                                    reasoning_delta += think_text
+                                if reasoning_delta:
+                                    full_reasoning += reasoning_delta
+                                    extra_chunk = f"data: {json.dumps({'reasoning': reasoning_delta})}\n\n"
+                                if content_val != chunk_data.get("content"):
+                                    chunk_data["content"] = content_val
+                                    chunk = f"data: {json.dumps(chunk_data)}\n\n"
 
-                            if "reasoning" in chunk_data:
+                                if not content_val and not reasoning_delta:
+                                    skip_chunk = True
+
+                                full_response += content_val
+                            elif "reasoning" in chunk_data:
                                 full_reasoning += chunk_data["reasoning"]
                             if "error" in chunk_data:
                                 failed = True
@@ -180,7 +202,12 @@ async def chat_completion(
                         except Exception as e:
                             print(f"Error processing chunk: {e}")
                             pass
-
+                        if extra_chunk:
+                            yield extra_chunk
+                            await asyncio.sleep(0)
+                        if skip_chunk:
+                            next_chunk_task = asyncio.ensure_future(stream.__anext__())
+                            continue
                         yield chunk
                         await asyncio.sleep(0)
                         next_chunk_task = asyncio.ensure_future(stream.__anext__())
@@ -194,6 +221,18 @@ async def chat_completion(
                             await aclose()
                         except Exception:
                             pass
+
+                if not client_gone and think_state.get("pending"):
+                    pending_text = think_state.get("pending", "")
+                    if think_state.get("in_think"):
+                        full_reasoning += pending_text
+                        pending_chunk = f"data: {json.dumps({'reasoning': pending_text})}\n\n"
+                    else:
+                        full_response += pending_text
+                        pending_chunk = f"data: {json.dumps({'content': pending_text})}\n\n"
+                    yield pending_chunk
+                    await asyncio.sleep(0)
+                    think_state["pending"] = ""
 
                 if client_gone:
                     return
@@ -235,6 +274,8 @@ async def chat_completion(
 
     try:
         provider_kwargs = _build_provider_kwargs(chat_request)
+        if provider_id != "openrouter":
+            provider_kwargs.pop("reasoning", None)
 
         # Handle Seedream non-streaming if needed (though UI usually uses stream)
         response_content, reasoning_content = await provider_client.chat(
@@ -242,6 +283,10 @@ async def chat_completion(
             messages=api_messages,
             **provider_kwargs,
         )
+
+        response_content, think_text = _extract_think_tag(response_content)
+        if think_text:
+            reasoning_content = f"{reasoning_content or ''}{think_text}"
 
         # Process images for non-streaming response
         response_content, _ = await _localize_markdown_images(response_content)
