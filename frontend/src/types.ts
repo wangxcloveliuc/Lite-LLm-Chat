@@ -107,7 +107,10 @@ export interface GroqSettings extends DeepSeekSettings {
 
 export type GrokSettings = DeepSeekSettings;
 
-export type NvidiaSettings = DeepSeekSettings;
+export interface NvidiaSettings extends DeepSeekSettings {
+  thinking?: boolean;
+  reasoning_effort?: 'low' | 'medium' | 'high';
+}
 
 export interface OpenRouterSettings extends DeepSeekSettings {
   transforms?: string;

@@ -203,6 +203,8 @@ const useChatSettings = ({ selectedProvider, selectedModel }: UseChatSettingsPar
     fps: undefined,
     video_detail: 'auto',
     max_frames: undefined,
+    thinking: undefined,
+    reasoning_effort: undefined,
   });
   const [openrouterSettings, setOpenrouterSettings] = useState<OpenRouterSettings>({
     frequency_penalty: 0,

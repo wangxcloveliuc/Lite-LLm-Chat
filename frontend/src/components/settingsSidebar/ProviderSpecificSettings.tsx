@@ -72,7 +72,9 @@ const ProviderSpecificSettings: React.FC<ProviderSpecificSettingsProps> = ({
 
       {isGrok && <GrokSettingsSection />}
 
-      {isNvidia && <NvidiaSettingsSection />}
+      {isNvidia && (
+        <NvidiaSettingsSection settings={nvidiaSettings} handleChange={handleChange} />
+      )}
 
       {isMistral && (
         <MistralSettingsSection settings={mistralSettings} handleChange={handleChange} />
