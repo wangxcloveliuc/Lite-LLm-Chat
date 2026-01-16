@@ -77,6 +77,21 @@ def _set_cached_models(provider_id: str, models: List[Dict[str, object]]) -> Non
         _MODEL_CACHE[provider_id] = ModelCacheEntry(models, time.time())
 
 
+def _dedupe_models(
+    models: List[Dict[str, object]],
+    key_fn,
+) -> List[Dict[str, object]]:
+    seen = set()
+    deduped: List[Dict[str, object]] = []
+    for model in models:
+        key = key_fn(model)
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(model)
+    return deduped
+
+
 def _clear_cache(provider_id: Optional[str] = None) -> None:
     if provider_id:
         _MODEL_CACHE.pop(provider_id, None)
@@ -106,6 +121,7 @@ async def list_models(provider: Optional[str] = None) -> List[Dict[str, object]]
         if not p:
             return []
         models = await p.list_models()
+        models = _dedupe_models(models, lambda m: m.get("id"))
         _set_cached_models(provider, models)
         return models
 
@@ -116,9 +132,13 @@ async def list_models(provider: Optional[str] = None) -> List[Dict[str, object]]
             all_models.extend(cached)
         else:
             models = await p.list_models()
+            models = _dedupe_models(models, lambda m: m.get("id"))
             _set_cached_models(provider_id, models)
             all_models.extend(models)
-    return all_models
+    return _dedupe_models(
+        all_models,
+        lambda m: (m.get("provider"), m.get("id")),
+    )
 
 
 def get_provider(provider_id: str) -> Optional[LLMProvider]:
