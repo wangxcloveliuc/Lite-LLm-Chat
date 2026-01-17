@@ -156,6 +156,13 @@ class ChatRequest(BaseModel):
     # Mistral specific
     safe_prompt: Optional[bool] = None
     random_seed: Optional[int] = None
+    # Gemini Imagen specific
+    imagen_number_of_images: Optional[int] = Field(default=None, ge=1, le=4)
+    imagen_image_size: Optional[str] = Field(default=None, pattern="^(1K|2K)$")
+    imagen_aspect_ratio: Optional[str] = Field(default=None, pattern="^(1:1|3:4|4:3|9:16|16:9)$")
+    imagen_person_generation: Optional[str] = Field(
+        default=None, pattern="^(dont_allow|allow_adult|allow_all)$"
+    )
     # Doubao Seedream specific
     sequential_image_generation: Optional[str] = None
     max_images: Optional[int] = None

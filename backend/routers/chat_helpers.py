@@ -234,6 +234,16 @@ def _build_provider_kwargs(chat_request):
     if chat_request.random_seed is not None:
         provider_kwargs["random_seed"] = chat_request.random_seed
 
+    # Gemini Imagen specific
+    if chat_request.imagen_number_of_images is not None:
+        provider_kwargs["imagen_number_of_images"] = chat_request.imagen_number_of_images
+    if chat_request.imagen_image_size is not None:
+        provider_kwargs["imagen_image_size"] = chat_request.imagen_image_size
+    if chat_request.imagen_aspect_ratio is not None:
+        provider_kwargs["imagen_aspect_ratio"] = chat_request.imagen_aspect_ratio
+    if chat_request.imagen_person_generation is not None:
+        provider_kwargs["imagen_person_generation"] = chat_request.imagen_person_generation
+
     # Doubao Seedream specific
     if chat_request.sequential_image_generation is not None:
         provider_kwargs["sequential_image_generation"] = chat_request.sequential_image_generation

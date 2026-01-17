@@ -148,6 +148,10 @@ export interface GeminiSettings extends DeepSeekSettings {
   seed?: number;
   thinking_budget?: number;
   safety_threshold?: 'BLOCK_NONE' | 'BLOCK_LOW_AND_ABOVE' | 'BLOCK_MED_AND_ABOVE' | 'BLOCK_ONLY_HIGH' | 'HARM_BLOCK_THRESHOLD_UNSPECIFIED';
+  imagen_number_of_images?: number;
+  imagen_image_size?: '1K' | '2K';
+  imagen_aspect_ratio?: '1:1' | '3:4' | '4:3' | '9:16' | '16:9';
+  imagen_person_generation?: 'dont_allow' | 'allow_adult' | 'allow_all';
 }
 
 export interface MistralSettings {
@@ -224,6 +228,10 @@ export interface ChatRequest {
   // Gemini-specific
   seed?: number;
   safety_threshold?: string;
+  imagen_number_of_images?: number;
+  imagen_image_size?: '1K' | '2K';
+  imagen_aspect_ratio?: '1:1' | '3:4' | '4:3' | '9:16' | '16:9';
+  imagen_person_generation?: 'dont_allow' | 'allow_adult' | 'allow_all';
   // Doubao Seedream specific
   sequential_image_generation?: string;
   max_images?: number;

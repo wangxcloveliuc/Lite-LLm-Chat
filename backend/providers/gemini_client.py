@@ -1,4 +1,6 @@
 from typing import List, Dict, AsyncIterator, Optional, Tuple
+import traceback
+import uuid
 import json
 import base64
 import os
@@ -59,6 +61,72 @@ class GeminiClient(BaseClient):
             return True
         model_name = model[len("models/"):] if model.startswith("models/") else model
         return any(model_name.startswith(prefix) for prefix in self._THINKING_MODELS)
+
+    def _is_imagen_model(self, model: str) -> bool:
+        model_name = model[len("models/"):] if model.startswith("models/") else model
+        return model_name.lower().startswith("imagen-")
+
+    def _build_imagen_config(self, kwargs: Dict) -> Dict:
+        config: Dict[str, object] = {}
+        if kwargs.get("imagen_number_of_images") is not None:
+            config["number_of_images"] = kwargs.get("imagen_number_of_images")
+        if kwargs.get("imagen_image_size"):
+            config["image_size"] = kwargs.get("imagen_image_size")
+        if kwargs.get("imagen_aspect_ratio"):
+            config["aspect_ratio"] = kwargs.get("imagen_aspect_ratio")
+        if kwargs.get("imagen_person_generation"):
+            config["person_generation"] = kwargs.get("imagen_person_generation")
+        return config
+
+    def _normalize_imagen_config(self, config: Dict) -> Optional[object]:
+        if not config:
+            return None
+        config_cls = getattr(self._types, "GenerateImagesConfig", None)
+        if config_cls is None:
+            config_cls = getattr(self._types, "ImageGenerationConfig", None)
+        if config_cls is None:
+            return config
+        try:
+            return config_cls(**config)
+        except Exception as e:
+            print(f"[GeminiClient] Failed to build Imagen config: {e}. Falling back to raw config.")
+            return config
+
+    def _format_image_markdown(self, images) -> str:
+        if not images:
+            return ""
+
+        def _extract_url(image_obj) -> str:
+            if isinstance(image_obj, dict):
+                image_url = image_obj.get("image_url") or image_obj.get("imageUrl") or {}
+                if isinstance(image_url, dict):
+                    return image_url.get("url", "") or image_url.get("uri", "")
+                return image_url or image_obj.get("url", "")
+            image_url = getattr(image_obj, "image_url", None) or getattr(image_obj, "imageUrl", None)
+            if isinstance(image_url, dict):
+                return image_url.get("url", "") or image_url.get("uri", "")
+            if image_url:
+                return image_url
+            return getattr(image_obj, "url", "") or ""
+
+        urls = [_extract_url(image) for image in images]
+        return "\n\n".join([f"![image]({url})" for url in urls if url])
+
+    def _save_generated_image(self, image_bytes: bytes, mime_type: Optional[str]) -> str:
+        if not image_bytes:
+            return ""
+        ext = ".png"
+        if mime_type:
+            guessed_ext = mimetypes.guess_extension(mime_type)
+            if guessed_ext:
+                ext = guessed_ext
+        filename = f"gemini_imagen_{uuid.uuid4().hex}{ext}"
+        upload_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads")
+        os.makedirs(upload_dir, exist_ok=True)
+        filepath = os.path.join(upload_dir, filename)
+        with open(filepath, "wb") as f:
+            f.write(image_bytes)
+        return f"/uploads/{filename}"
 
     def _get_safety_settings(self, threshold: str) -> List[Dict[str, str]]:
         if not threshold:
@@ -241,6 +309,12 @@ class GeminiClient(BaseClient):
         **kwargs,
     ) -> AsyncIterator[str]:
         try:
+            if self._is_imagen_model(model):
+                content, _reasoning = await self._handle_imagen(model, messages, **kwargs)
+                if content:
+                    yield f"data: {json.dumps({'content': content})}\n\n"
+                yield f"data: {json.dumps({'done': True})}\n\n"
+                return
             contents, system_instruction = self._messages_to_contents_and_system(messages)
 
             # Only enable thinking for specific models
@@ -312,6 +386,8 @@ class GeminiClient(BaseClient):
         **kwargs,
     ) -> Tuple[str, str]:
         try:
+            if self._is_imagen_model(model):
+                return await self._handle_imagen(model, messages, **kwargs)
             contents, system_instruction = self._messages_to_contents_and_system(messages)
 
             # Only enable thinking for specific models
@@ -364,6 +440,66 @@ class GeminiClient(BaseClient):
             return content, reasoning
         except Exception as e:
             raise Exception(f"Gemini API error: {str(e)}")
+
+    async def _handle_imagen(
+        self,
+        model: str,
+        messages: List[Dict[str, str]],
+        **kwargs,
+    ) -> Tuple[str, str]:
+        prompt = ""
+        for msg in reversed(messages):
+            if msg.get("role") != "user":
+                continue
+            content = msg.get("content")
+            if isinstance(content, str):
+                prompt = content
+            elif isinstance(content, list):
+                for part in content:
+                    if part.get("type") == "text":
+                        prompt = part.get("text", "")
+                        break
+            if prompt:
+                break
+
+        config = self._normalize_imagen_config(self._build_imagen_config(kwargs))
+        try:
+            print(
+                f"[GeminiClient] Imagen request model={model}, prompt_len={len(prompt)}, config={config}"
+            )
+            response = self._client.models.generate_images(
+                model=model,
+                prompt=prompt,
+                config=config,
+            )
+
+            images = getattr(response, "images", None)
+            if images is None and hasattr(response, "generated_images"):
+                images = getattr(response, "generated_images")
+            if images is None and isinstance(response, dict):
+                images = response.get("images") or response.get("generated_images")
+
+            content = self._format_image_markdown(images)
+            if not content and images:
+                saved_urls = []
+                for image in images:
+                    image_obj = getattr(image, "image", None) or image
+                    image_bytes = getattr(image_obj, "image_bytes", None)
+                    mime_type = getattr(image_obj, "mime_type", None)
+                    if image_bytes:
+                        saved_url = self._save_generated_image(image_bytes, mime_type)
+                        if saved_url:
+                            saved_urls.append(saved_url)
+                if saved_urls:
+                    content = "\n\n".join([f"![image]({url})" for url in saved_urls])
+            if not content:
+                print(f"[GeminiClient] Imagen response missing images: {response}")
+            return content, ""
+        except Exception as e:
+            print(
+                f"[GeminiClient] Imagen generation failed for model={model}: {e}\n{traceback.format_exc()}"
+            )
+            raise Exception(f"Gemini Imagen error: {str(e)}")
 
     def list_models(self) -> List[str]:
         try:

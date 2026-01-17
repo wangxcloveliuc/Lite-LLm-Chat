@@ -35,6 +35,8 @@ const useChatMessages = ({
   const [isLoading, setIsLoading] = useState(false);
   const [abortController, setAbortController] = useState<AbortController | null>(null);
 
+  const isGeminiImagen = selectedProvider === 'gemini' && selectedModel.toLowerCase().startsWith('imagen-');
+
   const handleStopGeneration = useCallback(() => {
     if (abortController) {
       abortController.abort();
@@ -114,7 +116,7 @@ const useChatMessages = ({
           provider: selectedProvider,
           model: selectedModel,
           messages: [{ role: 'user', content, images: imageUrls, videos: videoUrls, audios: audioUrls }],
-          stream: true,
+          stream: !isGeminiImagen,
           session_id: currentSessionId || undefined,
           title: currentSessionId ? undefined : content.substring(0, 50),
           temperature: currentSettings.temperature,
@@ -171,60 +173,82 @@ const useChatMessages = ({
           generate_audio: currentSettings.generate_audio,
           draft: currentSettings.draft,
           camera_fixed: currentSettings.camera_fixed,
+          imagen_number_of_images: currentSettings.imagen_number_of_images,
+          imagen_image_size: currentSettings.imagen_image_size,
+          imagen_aspect_ratio: currentSettings.imagen_aspect_ratio,
+          imagen_person_generation: currentSettings.imagen_person_generation,
         };
-
-        for await (const chunk of apiClient.chatStream(request, controller.signal)) {
-          if (chunk.session_id && !newSessionId) {
-            newSessionId = chunk.session_id;
+        if (isGeminiImagen) {
+          const response = await apiClient.chat(request);
+          if (response?.session_id && !newSessionId) {
+            newSessionId = response.session_id;
             setCurrentSessionId(newSessionId);
             loadSessions();
           }
-
-          if (chunk.content) {
-            const incoming = chunk.content;
+          if (response?.message) {
             setMessages((prev) => {
               const updated = [...prev];
               const lastMsg = updated[updated.length - 1];
               if (lastMsg && lastMsg.role === 'assistant') {
-                const newContent = incoming.startsWith(lastMsg.content)
-                  ? incoming
-                  : lastMsg.content + incoming;
-                updated[updated.length - 1] = { ...lastMsg, content: newContent };
+                updated[updated.length - 1] = response.message;
               }
               return updated;
             });
           }
+        } else {
+          for await (const chunk of apiClient.chatStream(request, controller.signal)) {
+            if (chunk.session_id && !newSessionId) {
+              newSessionId = chunk.session_id;
+              setCurrentSessionId(newSessionId);
+              loadSessions();
+            }
 
-          if (chunk.reasoning) {
-            const reasoningDelta = chunk.reasoning;
-            setMessages((prev) => {
-              const updated = [...prev];
-              const lastMsg = updated[updated.length - 1];
-              if (lastMsg && lastMsg.role === 'assistant') {
-                const newReasoning = (lastMsg.thought_process || '') + reasoningDelta;
-                updated[updated.length - 1] = { ...lastMsg, thought_process: newReasoning };
-              }
-              return updated;
-            });
-          }
+            if (chunk.content) {
+              const incoming = chunk.content;
+              setMessages((prev) => {
+                const updated = [...prev];
+                const lastMsg = updated[updated.length - 1];
+                if (lastMsg && lastMsg.role === 'assistant') {
+                  const newContent = incoming.startsWith(lastMsg.content)
+                    ? incoming
+                    : lastMsg.content + incoming;
+                  updated[updated.length - 1] = { ...lastMsg, content: newContent };
+                }
+                return updated;
+              });
+            }
 
-          if (chunk.search_results) {
-            const incomingResults = chunk.search_results as SearchResult[];
-            setMessages((prev) => {
-              const updated = [...prev];
-              const lastMsg = updated[updated.length - 1];
-              if (lastMsg && lastMsg.role === 'assistant') {
-                const existing = lastMsg.search_results || [];
-                const merged = [...existing, ...incomingResults];
-                updated[updated.length - 1] = { ...lastMsg, search_results: merged };
-              }
-              return updated;
-            });
-          }
+            if (chunk.reasoning) {
+              const reasoningDelta = chunk.reasoning;
+              setMessages((prev) => {
+                const updated = [...prev];
+                const lastMsg = updated[updated.length - 1];
+                if (lastMsg && lastMsg.role === 'assistant') {
+                  const newReasoning = (lastMsg.thought_process || '') + reasoningDelta;
+                  updated[updated.length - 1] = { ...lastMsg, thought_process: newReasoning };
+                }
+                return updated;
+              });
+            }
 
-          if (chunk.error) {
-            console.error('Stream error:', chunk.error);
-            break;
+            if (chunk.search_results) {
+              const incomingResults = chunk.search_results as SearchResult[];
+              setMessages((prev) => {
+                const updated = [...prev];
+                const lastMsg = updated[updated.length - 1];
+                if (lastMsg && lastMsg.role === 'assistant') {
+                  const existing = lastMsg.search_results || [];
+                  const merged = [...existing, ...incomingResults];
+                  updated[updated.length - 1] = { ...lastMsg, search_results: merged };
+                }
+                return updated;
+              });
+            }
+
+            if (chunk.error) {
+              console.error('Stream error:', chunk.error);
+              break;
+            }
           }
         }
       } catch (error: unknown) {
@@ -263,6 +287,7 @@ const useChatMessages = ({
     [
       currentSessionId,
       getCurrentSettings,
+      isGeminiImagen,
       loadSessions,
       refreshMessages,
       selectedModel,

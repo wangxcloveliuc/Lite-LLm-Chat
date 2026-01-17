@@ -38,6 +38,7 @@ const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
   const isOpenRouter = provider === 'openrouter';
   const isMistral = provider === 'mistral';
   const isGemini = provider === 'gemini';
+  const isGeminiImagen = isGemini && modelId.toLowerCase().startsWith('imagen-');
   const isSeedream = isDoubao && modelId.toLowerCase().includes('seedream');
   const isSeedance = isDoubao && modelId.toLowerCase().includes('seedance');
 
@@ -73,7 +74,7 @@ const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
       </div>
 
       <div className="settings-content" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-        {isSeedream || isSeedance ? (
+        {isSeedream || isSeedance || isGeminiImagen ? (
           <ProviderSpecificSettings provider={provider} modelId={modelId} settings={settings} handleChange={handleChange} />
         ) : isDeepSeek || isDoubao || isSiliconFlow || isCerebras || isGroq || isGrok || isNvidia || isOpenRouter || isMistral || isGemini ? (
           <>

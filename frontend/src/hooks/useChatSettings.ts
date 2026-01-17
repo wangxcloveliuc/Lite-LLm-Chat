@@ -74,6 +74,10 @@ export type ChatRequestSettings = {
   web_search_engine?: 'native' | 'exa';
   web_search_prompt?: string;
   web_search_context_size?: 'low' | 'medium' | 'high';
+  imagen_number_of_images?: number;
+  imagen_image_size?: '1K' | '2K';
+  imagen_aspect_ratio?: '1:1' | '3:4' | '4:3' | '9:16' | '16:9';
+  imagen_person_generation?: 'dont_allow' | 'allow_adult' | 'allow_all';
 };
 
 type UseChatSettingsParams = {
@@ -281,6 +285,10 @@ const useChatSettings = ({ selectedProvider, selectedModel }: UseChatSettingsPar
     seed: undefined,
     thinking_budget: undefined,
     safety_threshold: 'BLOCK_NONE',
+    imagen_number_of_images: 4,
+    imagen_image_size: '1K',
+    imagen_aspect_ratio: '1:1',
+    imagen_person_generation: 'allow_adult',
   });
 
   const getCurrentSettings = useCallback((): ChatRequestSettings => {

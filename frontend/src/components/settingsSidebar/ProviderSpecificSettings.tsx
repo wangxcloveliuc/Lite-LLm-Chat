@@ -17,6 +17,7 @@ import GrokSettingsSection from './providerSpecific/GrokSettingsSection';
 import NvidiaSettingsSection from './providerSpecific/NvidiaSettingsSection';
 import MistralSettingsSection from './providerSpecific/MistralSettingsSection';
 import GeminiSettingsSection from './providerSpecific/GeminiSettingsSection';
+import GeminiImagenSettingsSection from './providerSpecific/GeminiImagenSettingsSection';
 import DoubaoSeedanceSettingsSection from './providerSpecific/DoubaoSeedanceSettingsSection';
 import DoubaoSeedreamSettingsSection from './providerSpecific/DoubaoSeedreamSettingsSection';
 import DoubaoSettingsSection from './providerSpecific/DoubaoSettingsSection';
@@ -48,6 +49,7 @@ const ProviderSpecificSettings: React.FC<ProviderSpecificSettingsProps> = ({
   const isOpenRouter = provider === 'openrouter';
   const isMistral = provider === 'mistral';
   const isGemini = provider === 'gemini';
+  const isGeminiImagen = isGemini && modelId.toLowerCase().startsWith('imagen-');
   const isSeedream = isDoubao && modelId.toLowerCase().includes('seedream');
   const isSeedance = isDoubao && modelId.toLowerCase().includes('seedance');
 
@@ -81,7 +83,11 @@ const ProviderSpecificSettings: React.FC<ProviderSpecificSettingsProps> = ({
       )}
 
       {isGemini && (
-        <GeminiSettingsSection settings={geminiSettings} handleChange={handleChange} />
+        isGeminiImagen ? (
+          <GeminiImagenSettingsSection settings={geminiSettings} handleChange={handleChange} />
+        ) : (
+          <GeminiSettingsSection settings={geminiSettings} handleChange={handleChange} />
+        )
       )}
 
       {isSeedance && (
