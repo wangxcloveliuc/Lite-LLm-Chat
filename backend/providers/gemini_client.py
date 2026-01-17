@@ -218,6 +218,10 @@ class GeminiClient(BaseClient):
                 if isinstance(part, dict):
                     sig = part.get("thought_signature") or part.get("thoughtSignature")
                 if sig:
+                    if isinstance(sig, (bytes, bytearray)):
+                        sig = base64.b64encode(sig).decode("utf-8")
+                    elif not isinstance(sig, str):
+                        sig = str(sig)
                     signatures.append(sig)
         return signatures
 
@@ -301,7 +305,7 @@ class GeminiClient(BaseClient):
         )
         tools = self._build_tools(kwargs.get("google_search"))
         thinking_cfg = (
-            self._types.ThinkingConfig(thinking_level=thinking_level)
+            self._types.ThinkingConfig(thinking_level=thinking_level, include_thoughts=True)
             if thinking_level
             else None
         )
@@ -550,7 +554,10 @@ class GeminiClient(BaseClient):
                 thinking_budget = -1  # Default to unlimited if model supports it
 
             if thinking_level:
-                thinking_cfg = self._types.ThinkingConfig(thinking_level=thinking_level)
+                thinking_cfg = self._types.ThinkingConfig(
+                    thinking_level=thinking_level,
+                    include_thoughts=True,
+                )
             else:
                 thinking_cfg = (
                     self._types.ThinkingConfig(
@@ -644,7 +651,10 @@ class GeminiClient(BaseClient):
                 thinking_budget = -1  # Default to unlimited if model supports it
 
             if thinking_level:
-                thinking_cfg = self._types.ThinkingConfig(thinking_level=thinking_level)
+                thinking_cfg = self._types.ThinkingConfig(
+                    thinking_level=thinking_level,
+                    include_thoughts=True,
+                )
             else:
                 thinking_cfg = (
                     self._types.ThinkingConfig(
