@@ -67,6 +67,23 @@ const GeminiSettingsSection = ({ settings, handleChange }: GeminiSettingsSection
     </div>
 
     <div className="setting-group">
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <label style={{ fontSize: '14px', fontWeight: '500', cursor: 'pointer' }}>
+          Google Search
+        </label>
+        <input
+          type="checkbox"
+          checked={settings.google_search ?? false}
+          onChange={(e) => handleChange('google_search', e.target.checked)}
+          style={{ cursor: 'pointer' }}
+        />
+      </div>
+      <p style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+        Enable Google Search grounding for Gemini responses.
+      </p>
+    </div>
+
+    <div className="setting-group">
       <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>
         Safety Threshold
       </label>

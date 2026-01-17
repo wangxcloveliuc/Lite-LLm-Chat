@@ -54,6 +54,7 @@ class GeminiClient(BaseClient):
             http_options=http_options,
         )
         self._last_thought_signatures: List[str] = []
+        self._last_search_results: List[Dict[str, str]] = []
 
     def _should_enable_thinking(self, model: str) -> bool:
         # Check if thinking is explicitly mentioned in model name or in the whitelist
@@ -62,6 +63,10 @@ class GeminiClient(BaseClient):
             return True
         model_name = model[len("models/"):] if model.startswith("models/") else model
         return any(model_name.startswith(prefix) for prefix in self._THINKING_MODELS)
+
+    def _supports_thinking_level(self, model: str) -> bool:
+        model_name = model[len("models/"):] if model.startswith("models/") else model
+        return model_name.lower().startswith("gemini-3")
 
     def _is_imagen_model(self, model: str) -> bool:
         model_name = model[len("models/"):] if model.startswith("models/") else model
@@ -216,6 +221,71 @@ class GeminiClient(BaseClient):
                     signatures.append(sig)
         return signatures
 
+    def _extract_search_results(self, response) -> List[Dict[str, str]]:
+        results: List[Dict[str, str]] = []
+        candidates = getattr(response, "candidates", None) or []
+        if isinstance(response, dict):
+            candidates = response.get("candidates") or []
+
+        for candidate in candidates:
+            grounding = getattr(candidate, "grounding_metadata", None) or getattr(
+                candidate, "groundingMetadata", None
+            )
+            if isinstance(candidate, dict):
+                grounding = candidate.get("grounding_metadata") or candidate.get("groundingMetadata")
+            if not grounding:
+                continue
+            chunks = getattr(grounding, "grounding_chunks", None) or getattr(
+                grounding, "groundingChunks", None
+            )
+            if isinstance(grounding, dict):
+                chunks = grounding.get("grounding_chunks") or grounding.get("groundingChunks")
+            if not chunks:
+                continue
+            for chunk in chunks:
+                web = getattr(chunk, "web", None)
+                if isinstance(chunk, dict):
+                    web = chunk.get("web") or chunk.get("web_data") or chunk.get("webData")
+                url = None
+                title = None
+                content = None
+                if web:
+                    if isinstance(web, dict):
+                        url = web.get("uri") or web.get("url") or web.get("link")
+                        title = web.get("title") or web.get("name") or url
+                    else:
+                        url = getattr(web, "uri", None) or getattr(web, "url", None)
+                        title = getattr(web, "title", None) or getattr(web, "name", None) or url
+                if isinstance(chunk, dict):
+                    url = url or chunk.get("uri") or chunk.get("url") or chunk.get("link")
+                    title = title or chunk.get("title") or chunk.get("name")
+                    content = chunk.get("content") or chunk.get("snippet")
+                else:
+                    url = url or getattr(chunk, "uri", None) or getattr(chunk, "url", None)
+                    title = title or getattr(chunk, "title", None) or getattr(chunk, "name", None)
+                    content = getattr(chunk, "content", None) or getattr(chunk, "snippet", None)
+                if not url:
+                    continue
+                entry = {"url": url, "title": title or url}
+                if content:
+                    entry["content"] = content
+                results.append(entry)
+
+        deduped: List[Dict[str, str]] = []
+        seen = set()
+        for item in results:
+            url = item.get("url")
+            if not url or url in seen:
+                continue
+            seen.add(url)
+            deduped.append(item)
+        return deduped
+
+    def _build_tools(self, google_search: Optional[bool]):
+        if not google_search:
+            return None
+        return [self._types.Tool(google_search=self._types.GoogleSearch())]
+
     async def _handle_gemini_image_generation(
         self,
         model: str,
@@ -226,7 +296,10 @@ class GeminiClient(BaseClient):
         response_modalities = self._normalize_response_modalities(kwargs.get("modalities"))
         image_config = self._normalize_image_config(kwargs.get("image_config"))
         media_resolution = self._normalize_media_resolution(kwargs.get("media_resolution"))
-        thinking_level = kwargs.get("thinking_level")
+        thinking_level = (
+            kwargs.get("thinking_level") if self._supports_thinking_level(model) else None
+        )
+        tools = self._build_tools(kwargs.get("google_search"))
         thinking_cfg = (
             self._types.ThinkingConfig(thinking_level=thinking_level)
             if thinking_level
@@ -246,6 +319,7 @@ class GeminiClient(BaseClient):
             image_config=image_config,
             thinking_config=thinking_cfg,
             media_resolution=media_resolution,
+            tools=tools,
         )
 
         response = await self._client.aio.models.generate_content(
@@ -255,6 +329,7 @@ class GeminiClient(BaseClient):
         )
 
         self._last_thought_signatures = self._extract_thought_signatures(response)
+        self._last_search_results = self._extract_search_results(response)
 
         text = self._extract_regular_text_from_response(response)
         images = self._extract_inline_images(response)
@@ -447,6 +522,7 @@ class GeminiClient(BaseClient):
     ) -> AsyncIterator[str]:
         try:
             self._last_thought_signatures = []
+            self._last_search_results = []
             if self._is_imagen_model(model):
                 content, _reasoning = await self._handle_imagen(model, messages, **kwargs)
                 if content:
@@ -463,8 +539,11 @@ class GeminiClient(BaseClient):
 
             # Only enable thinking for specific models
             enable_thinking = self._should_enable_thinking(model)
-            thinking_level = kwargs.get("thinking_level")
+            thinking_level = (
+                kwargs.get("thinking_level") if self._supports_thinking_level(model) else None
+            )
             media_resolution = self._normalize_media_resolution(kwargs.get("media_resolution"))
+            tools = self._build_tools(kwargs.get("google_search"))
 
             thinking_budget = kwargs.get("thinking_budget")
             if thinking_budget is None:
@@ -504,6 +583,7 @@ class GeminiClient(BaseClient):
                 thinking_config=thinking_cfg,
                 safety_settings=safety_settings,
                 media_resolution=media_resolution,
+                tools=tools,
             )
 
             # The SDK provides async streaming under client.aio
@@ -512,6 +592,10 @@ class GeminiClient(BaseClient):
                 contents=contents,
                 config=config,
             ):
+                search_results = self._extract_search_results(chunk)
+                if search_results:
+                    self._last_search_results = search_results
+                    yield f"data: {json.dumps({'search_results': search_results})}\n\n"
                 signatures = self._extract_thought_signatures(chunk)
                 if signatures:
                     self._last_thought_signatures = signatures
@@ -540,6 +624,7 @@ class GeminiClient(BaseClient):
     ) -> Tuple[str, str]:
         try:
             self._last_thought_signatures = []
+            self._last_search_results = []
             if self._is_imagen_model(model):
                 return await self._handle_imagen(model, messages, **kwargs)
             if self._is_gemini_image_model(model):
@@ -548,8 +633,11 @@ class GeminiClient(BaseClient):
 
             # Only enable thinking for specific models
             enable_thinking = self._should_enable_thinking(model)
-            thinking_level = kwargs.get("thinking_level")
+            thinking_level = (
+                kwargs.get("thinking_level") if self._supports_thinking_level(model) else None
+            )
             media_resolution = self._normalize_media_resolution(kwargs.get("media_resolution"))
+            tools = self._build_tools(kwargs.get("google_search"))
 
             thinking_budget = kwargs.get("thinking_budget")
             if thinking_budget is None:
@@ -589,6 +677,7 @@ class GeminiClient(BaseClient):
                 thinking_config=thinking_cfg,
                 safety_settings=safety_settings,
                 media_resolution=media_resolution,
+                tools=tools,
             )
 
             response = await self._client.aio.models.generate_content(
@@ -598,6 +687,7 @@ class GeminiClient(BaseClient):
             )
 
             self._last_thought_signatures = self._extract_thought_signatures(response)
+            self._last_search_results = self._extract_search_results(response)
 
             content = self._extract_regular_text_from_response(response)
             reasoning = self._extract_reasoning_from_response(response)

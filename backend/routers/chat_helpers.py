@@ -249,6 +249,8 @@ def _build_provider_kwargs(chat_request):
         provider_kwargs["thinking_level"] = chat_request.thinking_level
     if chat_request.media_resolution is not None:
         provider_kwargs["media_resolution"] = chat_request.media_resolution
+    if chat_request.google_search is not None:
+        provider_kwargs["google_search"] = chat_request.google_search
 
     # Doubao Seedream specific
     if chat_request.sequential_image_generation is not None:

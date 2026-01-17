@@ -173,6 +173,7 @@ const useChatMessages = ({
           safety_threshold: currentSettings.safety_threshold,
           thinking_level: currentSettings.thinking_level,
           media_resolution: currentSettings.media_resolution,
+          google_search: currentSettings.google_search,
           sequential_image_generation: currentSettings.sequential_image_generation,
           max_images: currentSettings.max_images,
           watermark: currentSettings.watermark,
