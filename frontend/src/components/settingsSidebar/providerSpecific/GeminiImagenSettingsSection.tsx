@@ -11,7 +11,7 @@ const GeminiImagenSettingsSection = ({ settings, handleChange }: GeminiImagenSet
   <>
     <div className="setting-group">
       <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>
-        Number of Images ({settings.imagen_number_of_images ?? 4})
+        Number of Images ({settings.imagen_number_of_images ?? 1})
       </label>
       <input
         type="number"

@@ -171,6 +171,7 @@ class ChatRequest(BaseModel):
         pattern="^(MEDIA_RESOLUTION_UNSPECIFIED|MEDIA_RESOLUTION_LOW|MEDIA_RESOLUTION_MEDIUM|MEDIA_RESOLUTION_HIGH)$",
     )
     google_search: Optional[bool] = None
+    url_context: Optional[bool] = None
     # Doubao Seedream specific
     sequential_image_generation: Optional[str] = None
     max_images: Optional[int] = None

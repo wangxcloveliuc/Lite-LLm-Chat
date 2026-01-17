@@ -77,6 +77,7 @@ export type ChatRequestSettings = {
     | 'MEDIA_RESOLUTION_MEDIUM'
     | 'MEDIA_RESOLUTION_HIGH';
   google_search?: boolean;
+  url_context?: boolean;
   web_search?: boolean;
   web_search_results?: number;
   web_search_engine?: 'native' | 'exa';
@@ -296,6 +297,7 @@ const useChatSettings = ({ selectedProvider, selectedModel }: UseChatSettingsPar
     thinking_level: 'high',
     media_resolution: 'MEDIA_RESOLUTION_UNSPECIFIED',
     google_search: false,
+    url_context: true,
     response_modalities: ['IMAGE', 'TEXT'],
     image_aspect_ratio: '1:1',
     image_size: undefined,

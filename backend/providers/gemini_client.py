@@ -290,6 +290,85 @@ class GeminiClient(BaseClient):
             return None
         return [self._types.Tool(google_search=self._types.GoogleSearch())]
 
+    def _build_url_context_tool(self, url_context: Optional[bool]):
+        if not url_context:
+            return None
+        if hasattr(self._types, "UrlContext"):
+            return self._types.Tool(url_context=self._types.UrlContext())
+        return {"url_context": {}}
+
+    def _merge_tools(self, *tools) -> Optional[List[object]]:
+        merged: List[object] = []
+        for tool in tools:
+            if not tool:
+                continue
+            if isinstance(tool, list):
+                merged.extend(tool)
+            else:
+                merged.append(tool)
+        return merged or None
+
+    def _extract_url_context_results(self, response) -> List[Dict[str, str]]:
+        results: List[Dict[str, str]] = []
+        candidates = getattr(response, "candidates", None) or []
+        if isinstance(response, dict):
+            candidates = response.get("candidates") or []
+
+        response_metadata = getattr(response, "url_context_metadata", None) or getattr(
+            response, "urlContextMetadata", None
+        )
+        if isinstance(response, dict):
+            response_metadata = response.get("url_context_metadata") or response.get(
+                "urlContextMetadata"
+            )
+
+        for candidate in candidates:
+            metadata = getattr(candidate, "url_context_metadata", None) or getattr(
+                candidate, "urlContextMetadata", None
+            )
+            if isinstance(candidate, dict):
+                metadata = candidate.get("url_context_metadata") or candidate.get("urlContextMetadata")
+            metadata = metadata or response_metadata
+            if not metadata:
+                continue
+            url_metadata = getattr(metadata, "url_metadata", None) or getattr(
+                metadata, "urlMetadata", None
+            )
+            if isinstance(metadata, dict):
+                url_metadata = metadata.get("url_metadata") or metadata.get("urlMetadata")
+            if not url_metadata:
+                url_metadata = getattr(metadata, "retrieved_urls", None) or getattr(
+                    metadata, "retrievedUrls", None
+                )
+            if isinstance(metadata, dict) and not url_metadata:
+                url_metadata = metadata.get("retrieved_urls") or metadata.get("retrievedUrls")
+            if isinstance(url_metadata, list):
+                for item in url_metadata:
+                    if isinstance(item, str):
+                        results.append({"url": item, "title": item})
+                        continue
+                    if not isinstance(item, dict):
+                        continue
+                    url = item.get("retrieved_url") or item.get("url") or item.get("uri")
+                    if not url:
+                        continue
+                    title = item.get("title") or url
+                    status = item.get("url_retrieval_status") or item.get("status")
+                    entry = {"url": url, "title": title}
+                    if status:
+                        entry["content"] = status
+                    results.append(entry)
+
+        deduped: List[Dict[str, str]] = []
+        seen = set()
+        for item in results:
+            url = item.get("url")
+            if not url or url in seen:
+                continue
+            seen.add(url)
+            deduped.append(item)
+        return deduped
+
     async def _handle_gemini_image_generation(
         self,
         model: str,
@@ -303,7 +382,10 @@ class GeminiClient(BaseClient):
         thinking_level = (
             kwargs.get("thinking_level") if self._supports_thinking_level(model) else None
         )
-        tools = self._build_tools(kwargs.get("google_search"))
+        tools = self._merge_tools(
+            self._build_tools(kwargs.get("google_search")),
+            self._build_url_context_tool(kwargs.get("url_context")),
+        )
         thinking_cfg = (
             self._types.ThinkingConfig(thinking_level=thinking_level, include_thoughts=True)
             if thinking_level
@@ -333,7 +415,10 @@ class GeminiClient(BaseClient):
         )
 
         self._last_thought_signatures = self._extract_thought_signatures(response)
-        self._last_search_results = self._extract_search_results(response)
+        self._last_search_results = (
+            self._extract_search_results(response)
+            or self._extract_url_context_results(response)
+        )
 
         text = self._extract_regular_text_from_response(response)
         images = self._extract_inline_images(response)
@@ -547,7 +632,10 @@ class GeminiClient(BaseClient):
                 kwargs.get("thinking_level") if self._supports_thinking_level(model) else None
             )
             media_resolution = self._normalize_media_resolution(kwargs.get("media_resolution"))
-            tools = self._build_tools(kwargs.get("google_search"))
+            tools = self._merge_tools(
+                self._build_tools(kwargs.get("google_search")),
+                self._build_url_context_tool(kwargs.get("url_context")),
+            )
 
             thinking_budget = kwargs.get("thinking_budget")
             if thinking_budget is None:
@@ -600,6 +688,8 @@ class GeminiClient(BaseClient):
                 config=config,
             ):
                 search_results = self._extract_search_results(chunk)
+                if not search_results:
+                    search_results = self._extract_url_context_results(chunk)
                 if search_results:
                     self._last_search_results = search_results
                     yield f"data: {json.dumps({'search_results': search_results})}\n\n"
@@ -697,7 +787,10 @@ class GeminiClient(BaseClient):
             )
 
             self._last_thought_signatures = self._extract_thought_signatures(response)
-            self._last_search_results = self._extract_search_results(response)
+            self._last_search_results = (
+                self._extract_search_results(response)
+                or self._extract_url_context_results(response)
+            )
 
             content = self._extract_regular_text_from_response(response)
             reasoning = self._extract_reasoning_from_response(response)

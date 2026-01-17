@@ -84,6 +84,23 @@ const GeminiSettingsSection = ({ settings, handleChange }: GeminiSettingsSection
     </div>
 
     <div className="setting-group">
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <label style={{ fontSize: '14px', fontWeight: '500', cursor: 'pointer' }}>
+          URL Context
+        </label>
+        <input
+          type="checkbox"
+          checked={settings.url_context ?? true}
+          onChange={(e) => handleChange('url_context', e.target.checked)}
+          style={{ cursor: 'pointer' }}
+        />
+      </div>
+      <p style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+        Allow Gemini to fetch and ground answers using URLs in your prompt.
+      </p>
+    </div>
+
+    <div className="setting-group">
       <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>
         Safety Threshold
       </label>

@@ -156,6 +156,7 @@ export interface GeminiSettings extends DeepSeekSettings {
     | 'MEDIA_RESOLUTION_MEDIUM'
     | 'MEDIA_RESOLUTION_HIGH';
   google_search?: boolean;
+  url_context?: boolean;
   response_modalities?: ('IMAGE' | 'TEXT')[];
   image_aspect_ratio?: string;
   image_size?: '1K' | '2K' | '4K';
@@ -246,6 +247,7 @@ export interface ChatRequest {
     | 'MEDIA_RESOLUTION_MEDIUM'
     | 'MEDIA_RESOLUTION_HIGH';
   google_search?: boolean;
+  url_context?: boolean;
   imagen_number_of_images?: number;
   imagen_image_size?: '1K' | '2K';
   imagen_aspect_ratio?: '1:1' | '3:4' | '4:3' | '9:16' | '16:9';
