@@ -21,6 +21,7 @@ const syntaxTheme: { [key: string]: CSSProperties } = oneLight as unknown as { [
 
 const ChatMessage = ({ message, index, onEdit, onRefresh, onImageClick }: ChatMessageProps) => {
   const [isThoughtExpanded, setIsThoughtExpanded] = useState(true);
+  const [expandedSearchResults, setExpandedSearchResults] = useState<Record<string, boolean>>({});
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(message.content);
   const [copied, setCopied] = useState(false);
@@ -203,25 +204,70 @@ const ChatMessage = ({ message, index, onEdit, onRefresh, onImageClick }: ChatMe
           </ReactMarkdown>
         </div>
         {message.role === 'assistant' && message.search_results && message.search_results.length > 0 && (
-          <div className="message-search-results" style={{ marginTop: '12px' }}>
-            <div style={{ fontSize: '12px', fontWeight: 600, color: '#6B7280', marginBottom: '6px' }}>Sources</div>
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              {message.search_results.map((result, i) => (
-                <li key={`${result.url}-${i}`}>
-                  <a
-                    href={result.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    style={{ color: '#2563EB', textDecoration: 'none', fontSize: '14px' }}
-                  >
-                    {result.title || result.url}
-                  </a>
-                  {result.content && (
-                    <div style={{ color: '#6B7280', fontSize: '12px', marginTop: '2px' }}>{result.content}</div>
-                  )}
-                </li>
-              ))}
-            </ul>
+          <div className="search-results-container">
+            <button
+              className="search-results-header"
+            >
+              <svg
+                className="chevron-icon expanded"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <path d="m9 18 6-6-6-6" />
+              </svg>
+              <span>Search Results</span>
+            </button>
+            <div className="search-results-content">
+              <ul className="search-results-list">
+                {message.search_results.map((result, i) => {
+                  const resultKey = `${result.url}-${i}`;
+                  const isExpanded = expandedSearchResults[resultKey] ?? false;
+                  const hasContent = Boolean(result.content);
+
+                  return (
+                    <li key={resultKey} className="search-results-item">
+                      <div className="search-results-item-header">
+                        <a
+                          href={result.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="search-results-link"
+                        >
+                          {result.title || result.url}
+                        </a>
+                        {hasContent && (
+                          <button
+                            className="search-results-toggle"
+                            onClick={() =>
+                              setExpandedSearchResults((prev) => ({
+                                ...prev,
+                                [resultKey]: !isExpanded,
+                              }))
+                            }
+                          >
+                            <svg
+                              className={`chevron-icon ${isExpanded ? 'expanded' : ''}`}
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                            >
+                              <path d="m9 18 6-6-6-6" />
+                            </svg>
+                            <span>{isExpanded ? 'Hide' : 'Show'}</span>
+                          </button>
+                        )}
+                      </div>
+                      {hasContent && isExpanded && (
+                        <div className="search-results-snippet">{result.content}</div>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
           </div>
         )}
       </div>
