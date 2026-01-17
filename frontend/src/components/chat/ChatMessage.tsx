@@ -192,6 +192,28 @@ const ChatMessage = ({ message, index, onEdit, onRefresh, onImageClick }: ChatMe
             {message.content}
           </ReactMarkdown>
         </div>
+        {message.role === 'assistant' && message.search_results && message.search_results.length > 0 && (
+          <div className="message-search-results" style={{ marginTop: '12px' }}>
+            <div style={{ fontSize: '12px', fontWeight: 600, color: '#6B7280', marginBottom: '6px' }}>Sources</div>
+            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              {message.search_results.map((result, i) => (
+                <li key={`${result.url}-${i}`}>
+                  <a
+                    href={result.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{ color: '#2563EB', textDecoration: 'none', fontSize: '14px' }}
+                  >
+                    {result.title || result.url}
+                  </a>
+                  {result.content && (
+                    <div style={{ color: '#6B7280', fontSize: '12px', marginTop: '2px' }}>{result.content}</div>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
       {message.role === 'user' && (
         <div className="message-actions">

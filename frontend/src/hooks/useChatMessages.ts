@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { apiClient } from '../api/apiClient';
-import type { Message, ChatRequest } from '../types';
+import type { Message, ChatRequest, SearchResult } from '../types';
 import type { ChatRequestSettings } from './useChatSettings';
 
 type UseChatMessagesParams = {
@@ -96,6 +96,18 @@ const useChatMessages = ({
               image_size: currentSettings.image_size,
             }
           : undefined;
+      const webSearchPlugin = currentSettings.web_search
+        ? {
+            id: 'web',
+            ...(currentSettings.web_search_engine ? { engine: currentSettings.web_search_engine } : {}),
+            ...(currentSettings.web_search_results ? { max_results: currentSettings.web_search_results } : {}),
+            ...(currentSettings.web_search_prompt ? { search_prompt: currentSettings.web_search_prompt } : {}),
+          }
+        : undefined;
+      const plugins = webSearchPlugin ? [webSearchPlugin] : undefined;
+      const webSearchOptions = currentSettings.web_search_context_size
+        ? { search_context_size: currentSettings.web_search_context_size }
+        : undefined;
 
       try {
         const request: ChatRequest = {
@@ -144,6 +156,8 @@ const useChatMessages = ({
           reasoning: reasoningConfig,
           modalities: currentSettings.image_generation ? ['image', 'text'] : undefined,
           image_config: imageConfig,
+          plugins,
+          web_search_options: webSearchOptions,
           seed: currentSettings.seed,
           safety_threshold: currentSettings.safety_threshold,
           sequential_image_generation: currentSettings.sequential_image_generation,
@@ -189,6 +203,20 @@ const useChatMessages = ({
               if (lastMsg && lastMsg.role === 'assistant') {
                 const newReasoning = (lastMsg.thought_process || '') + reasoningDelta;
                 updated[updated.length - 1] = { ...lastMsg, thought_process: newReasoning };
+              }
+              return updated;
+            });
+          }
+
+          if (chunk.search_results) {
+            const incomingResults = chunk.search_results as SearchResult[];
+            setMessages((prev) => {
+              const updated = [...prev];
+              const lastMsg = updated[updated.length - 1];
+              if (lastMsg && lastMsg.role === 'assistant') {
+                const existing = lastMsg.search_results || [];
+                const merged = [...existing, ...incomingResults];
+                updated[updated.length - 1] = { ...lastMsg, search_results: merged };
               }
               return updated;
             });

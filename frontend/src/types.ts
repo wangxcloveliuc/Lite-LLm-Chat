@@ -20,10 +20,17 @@ export interface Message {
   images?: string[];
   videos?: string[];
   audios?: string[];
+  search_results?: SearchResult[];
   created_at?: string;
   provider?: string;
   model?: string;
   thought_process?: string;
+}
+
+export interface SearchResult {
+  title?: string;
+  url: string;
+  content?: string;
 }
 
 export interface Session {
@@ -129,6 +136,11 @@ export interface OpenRouterSettings extends DeepSeekSettings {
   image_generation?: boolean;
   image_aspect_ratio?: string;
   image_size?: '1K' | '2K' | '4K';
+  web_search?: boolean;
+  web_search_results?: number;
+  web_search_engine?: 'native' | 'exa';
+  web_search_prompt?: string;
+  web_search_context_size?: 'low' | 'medium' | 'high';
 }
 
 export interface GeminiSettings extends DeepSeekSettings {
@@ -205,6 +217,10 @@ export interface ChatRequest {
     aspect_ratio?: string;
     image_size?: string;
   };
+  plugins?: Record<string, unknown>[];
+  web_search_options?: {
+    search_context_size?: 'low' | 'medium' | 'high';
+  };
   // Gemini-specific
   seed?: number;
   safety_threshold?: string;
@@ -226,6 +242,7 @@ export interface ChatRequest {
 export interface StreamChunk {
   content?: string;
   reasoning?: string;
+  search_results?: SearchResult[];
   session_id?: number;
   error?: string;
   done?: boolean;

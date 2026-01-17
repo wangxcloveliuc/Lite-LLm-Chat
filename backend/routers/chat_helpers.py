@@ -225,6 +225,10 @@ def _build_provider_kwargs(chat_request):
             filtered_config = image_config
         if filtered_config:
             provider_kwargs["image_config"] = filtered_config
+    if chat_request.plugins is not None:
+        provider_kwargs["plugins"] = chat_request.plugins
+    if chat_request.web_search_options is not None:
+        provider_kwargs["web_search_options"] = chat_request.web_search_options
     if chat_request.safe_prompt is not None:
         provider_kwargs["safe_prompt"] = chat_request.safe_prompt
     if chat_request.random_seed is not None:

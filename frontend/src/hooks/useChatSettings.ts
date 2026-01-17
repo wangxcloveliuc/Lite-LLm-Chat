@@ -69,6 +69,11 @@ export type ChatRequestSettings = {
   image_generation?: boolean;
   image_aspect_ratio?: string;
   image_size?: '1K' | '2K' | '4K';
+  web_search?: boolean;
+  web_search_results?: number;
+  web_search_engine?: 'native' | 'exa';
+  web_search_prompt?: string;
+  web_search_context_size?: 'low' | 'medium' | 'high';
 };
 
 type UseChatSettingsParams = {
@@ -233,6 +238,11 @@ const useChatSettings = ({ selectedProvider, selectedModel }: UseChatSettingsPar
     image_generation: false,
     image_aspect_ratio: undefined,
     image_size: undefined,
+    web_search: false,
+    web_search_results: undefined,
+    web_search_engine: undefined,
+    web_search_prompt: '',
+    web_search_context_size: undefined,
   });
   const [grokSettings, setGrokSettings] = useState<GrokSettings>({
     frequency_penalty: 0,

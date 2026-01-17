@@ -26,6 +26,106 @@ const OpenRouterSettingsSection = ({ settings, handleChange }: OpenRouterSetting
     </div>
 
     <div className="setting-group">
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <label style={{ fontSize: '14px', fontWeight: '500', cursor: 'pointer' }}>
+          Web Search
+        </label>
+        <input
+          type="checkbox"
+          checked={settings.web_search ?? false}
+          onChange={(e) => handleChange('web_search', e.target.checked)}
+          style={{ cursor: 'pointer' }}
+        />
+      </div>
+      <p style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+        Enable OpenRouter web search plugin for this request.
+      </p>
+    </div>
+
+    {settings.web_search && (
+      <div className="setting-group">
+        <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>
+          Search Results Count
+        </label>
+        <input
+          type="number"
+          min="1"
+          max="10"
+          step="1"
+          placeholder="5"
+          value={settings.web_search_results ?? ''}
+          onChange={(e) => {
+            const val = e.target.value === '' ? undefined : parseInt(e.target.value, 10);
+            handleChange('web_search_results', val);
+          }}
+          style={{ width: '100%', padding: '8px', border: '1px solid #E5E7EB', borderRadius: '4px' }}
+        />
+        <p style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+          Limit the number of search results returned by the plugin.
+        </p>
+      </div>
+    )}
+
+    {settings.web_search && (
+      <div className="setting-group">
+        <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>
+          Web Search Engine
+        </label>
+        <select
+          value={settings.web_search_engine || ''}
+          onChange={(e) => handleChange('web_search_engine', e.target.value || undefined)}
+          style={{ width: '100%', padding: '8px', border: '1px solid #E5E7EB', borderRadius: '4px', fontSize: '14px' }}
+        >
+          <option value="">Auto</option>
+          <option value="native">Native</option>
+          <option value="exa">Exa</option>
+        </select>
+        <p style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+          Choose native provider search or Exa search.
+        </p>
+      </div>
+    )}
+
+    {settings.web_search && (
+      <div className="setting-group">
+        <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>
+          Search Prompt
+        </label>
+        <textarea
+          rows={3}
+          placeholder="Use default web search prompt"
+          value={settings.web_search_prompt || ''}
+          onChange={(e) => handleChange('web_search_prompt', e.target.value || undefined)}
+          style={{ width: '100%', padding: '8px', border: '1px solid #E5E7EB', borderRadius: '4px', fontSize: '14px' }}
+        />
+        <p style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+          Overrides the default prompt used to attach search results.
+        </p>
+      </div>
+    )}
+
+    {settings.web_search && (
+      <div className="setting-group">
+        <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>
+          Search Context Size
+        </label>
+        <select
+          value={settings.web_search_context_size || ''}
+          onChange={(e) => handleChange('web_search_context_size', e.target.value || undefined)}
+          style={{ width: '100%', padding: '8px', border: '1px solid #E5E7EB', borderRadius: '4px', fontSize: '14px' }}
+        >
+          <option value="">Default</option>
+          <option value="low">Low</option>
+          <option value="medium">Medium</option>
+          <option value="high">High</option>
+        </select>
+        <p style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+          Applies to native web search via web_search_options.
+        </p>
+      </div>
+    )}
+
+    <div className="setting-group">
       <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>
         Fallback Models
       </label>

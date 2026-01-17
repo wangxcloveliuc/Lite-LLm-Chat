@@ -54,6 +54,7 @@ class MessageResponse(BaseModel):
     images: Optional[List[str]] = None
     videos: Optional[List[str]] = None
     audios: Optional[List[str]] = None
+    search_results: Optional[List[dict]] = None
     provider: Optional[str] = None
     model: Optional[str] = None
     thought_process: Optional[str] = None
@@ -150,6 +151,8 @@ class ChatRequest(BaseModel):
     reasoning: Optional[dict] = None
     modalities: Optional[List[str]] = None
     image_config: Optional[dict] = None
+    plugins: Optional[List[dict]] = None
+    web_search_options: Optional[dict] = None
     # Mistral specific
     safe_prompt: Optional[bool] = None
     random_seed: Optional[int] = None

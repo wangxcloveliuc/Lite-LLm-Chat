@@ -134,6 +134,7 @@ async def chat_completion(
             full_reasoning = ""
             failed = False
             think_state = {"pending": "", "in_think": False}
+            search_results_buffer = []
             try:
                 provider_kwargs = _build_provider_kwargs(chat_request)
                 if provider_id != "openrouter":
@@ -171,6 +172,12 @@ async def chat_completion(
                             chunk_data = json.loads(chunk[6:])
                             extra_chunk = None
                             skip_chunk = False
+                            if "search_results" in chunk_data:
+                                chunk_results = chunk_data.get("search_results") or []
+                                if isinstance(chunk_results, list):
+                                    search_results_buffer.extend(chunk_results)
+                                else:
+                                    search_results_buffer.append(chunk_results)
                             if "content" in chunk_data:
                                 content_val = chunk_data["content"]
                                 content_val, modified = await _localize_streaming_content(content_val)
@@ -255,6 +262,7 @@ async def chat_completion(
                         role="assistant",
                         content=full_response,
                         thought_process=full_reasoning if full_reasoning else None,
+                        search_results=search_results_buffer or None,
                         provider=provider_id,
                         model=model_id,
                     )
