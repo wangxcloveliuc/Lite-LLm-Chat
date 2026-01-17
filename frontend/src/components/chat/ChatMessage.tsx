@@ -186,6 +186,16 @@ const ChatMessage = ({ message, index, onEdit, onRefresh, onImageClick }: ChatMe
                     />
                   );
                 },
+                a({ href, children }) {
+                  if (!href) {
+                    return <>{children}</>;
+                  }
+                  return (
+                    <a href={href} target="_blank" rel="noreferrer">
+                      {children}
+                    </a>
+                  );
+                },
               } satisfies Components
             }
           >
