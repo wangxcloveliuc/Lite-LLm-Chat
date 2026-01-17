@@ -137,7 +137,7 @@ async def chat_completion(
             search_results_buffer = []
             try:
                 provider_kwargs = _build_provider_kwargs(chat_request)
-                if provider_id != "openrouter":
+                if provider_id not in ("openrouter", "gemini"):
                     provider_kwargs.pop("reasoning", None)
                     provider_kwargs.pop("modalities", None)
                     provider_kwargs.pop("image_config", None)
@@ -284,7 +284,7 @@ async def chat_completion(
 
     try:
         provider_kwargs = _build_provider_kwargs(chat_request)
-        if provider_id != "openrouter":
+        if provider_id not in ("openrouter", "gemini"):
             provider_kwargs.pop("reasoning", None)
             provider_kwargs.pop("modalities", None)
             provider_kwargs.pop("image_config", None)

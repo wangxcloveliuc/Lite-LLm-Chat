@@ -36,6 +36,10 @@ const useChatMessages = ({
   const [abortController, setAbortController] = useState<AbortController | null>(null);
 
   const isGeminiImagen = selectedProvider === 'gemini' && selectedModel.toLowerCase().startsWith('imagen-');
+  const isGeminiImageGeneration =
+    selectedProvider === 'gemini' &&
+    selectedModel.toLowerCase().includes('image') &&
+    !selectedModel.toLowerCase().startsWith('imagen-');
 
   const handleStopGeneration = useCallback(() => {
     if (abortController) {
@@ -92,7 +96,8 @@ const useChatMessages = ({
             }
           : undefined;
       const imageConfig =
-        currentSettings.image_aspect_ratio || currentSettings.image_size
+        (isGeminiImageGeneration || currentSettings.image_generation) &&
+        (currentSettings.image_aspect_ratio || currentSettings.image_size)
           ? {
               aspect_ratio: currentSettings.image_aspect_ratio,
               image_size: currentSettings.image_size,
@@ -156,7 +161,11 @@ const useChatMessages = ({
           structured_outputs: currentSettings.structured_outputs,
           parallel_tool_calls: currentSettings.parallel_tool_calls,
           reasoning: reasoningConfig,
-          modalities: currentSettings.image_generation ? ['image', 'text'] : undefined,
+          modalities: isGeminiImageGeneration
+            ? currentSettings.response_modalities
+            : currentSettings.image_generation
+              ? ['image', 'text']
+              : undefined,
           image_config: imageConfig,
           plugins,
           web_search_options: webSearchOptions,
@@ -288,6 +297,7 @@ const useChatMessages = ({
       currentSessionId,
       getCurrentSettings,
       isGeminiImagen,
+      isGeminiImageGeneration,
       loadSessions,
       refreshMessages,
       selectedModel,

@@ -66,6 +66,11 @@ class GeminiClient(BaseClient):
         model_name = model[len("models/"):] if model.startswith("models/") else model
         return model_name.lower().startswith("imagen-")
 
+    def _is_gemini_image_model(self, model: str) -> bool:
+        model_name = model[len("models/"):] if model.startswith("models/") else model
+        lowered = model_name.lower()
+        return "image" in lowered and not lowered.startswith("imagen-")
+
     def _build_imagen_config(self, kwargs: Dict) -> Dict:
         config: Dict[str, object] = {}
         if kwargs.get("imagen_number_of_images") is not None:
@@ -90,6 +95,30 @@ class GeminiClient(BaseClient):
             return config_cls(**config)
         except Exception as e:
             print(f"[GeminiClient] Failed to build Imagen config: {e}. Falling back to raw config.")
+            return config
+
+    def _normalize_response_modalities(self, modalities) -> Optional[List[str]]:
+        if not modalities:
+            return None
+        normalized: List[str] = []
+        for m in modalities:
+            if not m:
+                continue
+            val = str(m).strip().upper()
+            if val in {"IMAGE", "TEXT"}:
+                normalized.append(val)
+        return normalized or None
+
+    def _normalize_image_config(self, config: Optional[Dict]) -> Optional[object]:
+        if not config:
+            return None
+        config_cls = getattr(self._types, "ImageConfig", None)
+        if config_cls is None:
+            return config
+        try:
+            return config_cls(**config)
+        except Exception as e:
+            print(f"[GeminiClient] Failed to build image config: {e}. Falling back to raw config.")
             return config
 
     def _format_image_markdown(self, images) -> str:
@@ -127,6 +156,78 @@ class GeminiClient(BaseClient):
         with open(filepath, "wb") as f:
             f.write(image_bytes)
         return f"/uploads/{filename}"
+
+    def _extract_inline_images(self, response) -> List[Tuple[bytes, Optional[str]]]:
+        images: List[Tuple[bytes, Optional[str]]] = []
+        candidates = getattr(response, "candidates", None) or []
+        for candidate in candidates:
+            content = getattr(candidate, "content", None)
+            parts = getattr(content, "parts", None) or []
+            for part in parts:
+                inline = (
+                    getattr(part, "inline_data", None)
+                    or getattr(part, "inlineData", None)
+                    or getattr(part, "file_data", None)
+                    or getattr(part, "fileData", None)
+                )
+                if not inline:
+                    continue
+                data = getattr(inline, "data", None) or getattr(inline, "bytes", None)
+                mime_type = getattr(inline, "mime_type", None) or getattr(inline, "mimeType", None)
+                if isinstance(inline, dict):
+                    data = inline.get("data") or inline.get("bytes")
+                    mime_type = inline.get("mime_type") or inline.get("mimeType")
+                if not data:
+                    continue
+                if isinstance(data, str):
+                    try:
+                        data_bytes = base64.b64decode(data)
+                    except Exception:
+                        continue
+                else:
+                    data_bytes = data
+                if data_bytes:
+                    images.append((data_bytes, mime_type))
+        return images
+
+    async def _handle_gemini_image_generation(
+        self,
+        model: str,
+        messages: List[Dict[str, str]],
+        **kwargs,
+    ) -> Tuple[str, str]:
+        contents, system_instruction = self._messages_to_contents_and_system(messages)
+        response_modalities = self._normalize_response_modalities(kwargs.get("modalities"))
+        image_config = self._normalize_image_config(kwargs.get("image_config"))
+
+        config = self._types.GenerateContentConfig(
+            temperature=kwargs.get("temperature", 1),
+            max_output_tokens=kwargs.get("max_tokens"),
+            top_p=kwargs.get("top_p"),
+            top_k=kwargs.get("top_k"),
+            presence_penalty=kwargs.get("presence_penalty"),
+            frequency_penalty=kwargs.get("frequency_penalty"),
+            seed=kwargs.get("seed"),
+            system_instruction=system_instruction,
+            response_modalities=response_modalities,
+            image_config=image_config,
+        )
+
+        response = await self._client.aio.models.generate_content(
+            model=model,
+            contents=contents,
+            config=config,
+        )
+
+        text = self._extract_regular_text_from_response(response)
+        images = self._extract_inline_images(response)
+        saved_urls = [self._save_generated_image(img, mime) for img, mime in images]
+        markdown = "\n\n".join([f"![image]({url})" for url in saved_urls if url])
+        if text and markdown:
+            content = f"{text}\n\n{markdown}"
+        else:
+            content = text or markdown
+        return content, ""
 
     def _get_safety_settings(self, threshold: str) -> List[Dict[str, str]]:
         if not threshold:
@@ -315,6 +416,12 @@ class GeminiClient(BaseClient):
                     yield f"data: {json.dumps({'content': content})}\n\n"
                 yield f"data: {json.dumps({'done': True})}\n\n"
                 return
+            if self._is_gemini_image_model(model):
+                content, _reasoning = await self._handle_gemini_image_generation(model, messages, **kwargs)
+                if content:
+                    yield f"data: {json.dumps({'content': content})}\n\n"
+                yield f"data: {json.dumps({'done': True})}\n\n"
+                return
             contents, system_instruction = self._messages_to_contents_and_system(messages)
 
             # Only enable thinking for specific models
@@ -388,6 +495,8 @@ class GeminiClient(BaseClient):
         try:
             if self._is_imagen_model(model):
                 return await self._handle_imagen(model, messages, **kwargs)
+            if self._is_gemini_image_model(model):
+                return await self._handle_gemini_image_generation(model, messages, **kwargs)
             contents, system_instruction = self._messages_to_contents_and_system(messages)
 
             # Only enable thinking for specific models

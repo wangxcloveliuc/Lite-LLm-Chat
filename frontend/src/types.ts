@@ -148,6 +148,9 @@ export interface GeminiSettings extends DeepSeekSettings {
   seed?: number;
   thinking_budget?: number;
   safety_threshold?: 'BLOCK_NONE' | 'BLOCK_LOW_AND_ABOVE' | 'BLOCK_MED_AND_ABOVE' | 'BLOCK_ONLY_HIGH' | 'HARM_BLOCK_THRESHOLD_UNSPECIFIED';
+  response_modalities?: ('IMAGE' | 'TEXT')[];
+  image_aspect_ratio?: string;
+  image_size?: '1K' | '2K' | '4K';
   imagen_number_of_images?: number;
   imagen_image_size?: '1K' | '2K';
   imagen_aspect_ratio?: '1:1' | '3:4' | '4:3' | '9:16' | '16:9';

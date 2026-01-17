@@ -18,6 +18,7 @@ import NvidiaSettingsSection from './providerSpecific/NvidiaSettingsSection';
 import MistralSettingsSection from './providerSpecific/MistralSettingsSection';
 import GeminiSettingsSection from './providerSpecific/GeminiSettingsSection';
 import GeminiImagenSettingsSection from './providerSpecific/GeminiImagenSettingsSection';
+import GeminiImageGenerationSettingsSection from './providerSpecific/GeminiImageGenerationSettingsSection';
 import DoubaoSeedanceSettingsSection from './providerSpecific/DoubaoSeedanceSettingsSection';
 import DoubaoSeedreamSettingsSection from './providerSpecific/DoubaoSeedreamSettingsSection';
 import DoubaoSettingsSection from './providerSpecific/DoubaoSettingsSection';
@@ -50,6 +51,7 @@ const ProviderSpecificSettings: React.FC<ProviderSpecificSettingsProps> = ({
   const isMistral = provider === 'mistral';
   const isGemini = provider === 'gemini';
   const isGeminiImagen = isGemini && modelId.toLowerCase().startsWith('imagen-');
+  const isGeminiImageGeneration = isGemini && modelId.toLowerCase().includes('image') && !isGeminiImagen;
   const isSeedream = isDoubao && modelId.toLowerCase().includes('seedream');
   const isSeedance = isDoubao && modelId.toLowerCase().includes('seedance');
 
@@ -86,7 +88,15 @@ const ProviderSpecificSettings: React.FC<ProviderSpecificSettingsProps> = ({
         isGeminiImagen ? (
           <GeminiImagenSettingsSection settings={geminiSettings} handleChange={handleChange} />
         ) : (
-          <GeminiSettingsSection settings={geminiSettings} handleChange={handleChange} />
+          <>
+            <GeminiSettingsSection settings={geminiSettings} handleChange={handleChange} />
+            {isGeminiImageGeneration && (
+              <GeminiImageGenerationSettingsSection
+                settings={geminiSettings}
+                handleChange={handleChange}
+              />
+            )}
+          </>
         )
       )}
 

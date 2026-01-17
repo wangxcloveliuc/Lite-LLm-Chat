@@ -67,6 +67,7 @@ export type ChatRequestSettings = {
   parallel_tool_calls?: boolean;
   reasoning_summary?: 'auto' | 'concise' | 'detailed';
   image_generation?: boolean;
+  response_modalities?: ('IMAGE' | 'TEXT')[];
   image_aspect_ratio?: string;
   image_size?: '1K' | '2K' | '4K';
   web_search?: boolean;
@@ -285,6 +286,9 @@ const useChatSettings = ({ selectedProvider, selectedModel }: UseChatSettingsPar
     seed: undefined,
     thinking_budget: undefined,
     safety_threshold: 'BLOCK_NONE',
+    response_modalities: ['IMAGE', 'TEXT'],
+    image_aspect_ratio: '1:1',
+    image_size: undefined,
     imagen_number_of_images: 4,
     imagen_image_size: '1K',
     imagen_aspect_ratio: '1:1',
