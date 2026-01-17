@@ -90,7 +90,7 @@ const GeminiSettingsSection = ({ settings, handleChange }: GeminiSettingsSection
         </label>
         <input
           type="checkbox"
-          checked={settings.url_context ?? true}
+          checked={settings.url_context ?? false}
           onChange={(e) => handleChange('url_context', e.target.checked)}
           style={{ cursor: 'pointer' }}
         />

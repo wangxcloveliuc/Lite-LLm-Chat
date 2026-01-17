@@ -297,7 +297,7 @@ const useChatSettings = ({ selectedProvider, selectedModel }: UseChatSettingsPar
     thinking_level: 'high',
     media_resolution: 'MEDIA_RESOLUTION_UNSPECIFIED',
     google_search: false,
-    url_context: true,
+    url_context: false,
     response_modalities: ['IMAGE', 'TEXT'],
     image_aspect_ratio: '1:1',
     image_size: undefined,
