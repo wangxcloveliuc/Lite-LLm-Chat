@@ -44,6 +44,8 @@ class ChatMessage(Base):
     videos = Column(JSON, nullable=True)  # List of video URLs/paths
     audios = Column(JSON, nullable=True)  # List of audio URLs/paths
     thought_process = Column(Text, nullable=True)  # For reasoning/thinking content from inference models
+    thought_signatures = Column(JSON, nullable=True)
+    search_results = Column(JSON, nullable=True)
     provider = Column(String(50), nullable=True)
     model = Column(String(100), nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
@@ -66,8 +68,12 @@ def init_db():
             conn.exec_driver_sql("ALTER TABLE chat_messages ADD COLUMN model VARCHAR(100)")
         if "thought_process" not in existing_cols:
             conn.exec_driver_sql("ALTER TABLE chat_messages ADD COLUMN thought_process TEXT")
+        if "thought_signatures" not in existing_cols:
+            conn.exec_driver_sql("ALTER TABLE chat_messages ADD COLUMN thought_signatures TEXT")
         if "images" not in existing_cols:
             conn.exec_driver_sql("ALTER TABLE chat_messages ADD COLUMN images TEXT")
+        if "search_results" not in existing_cols:
+            conn.exec_driver_sql("ALTER TABLE chat_messages ADD COLUMN search_results TEXT")
 
 
 def get_db():

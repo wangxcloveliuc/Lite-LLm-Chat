@@ -30,7 +30,7 @@ export default function Header({
   const selectedModelObj = models.find((m) => m.id === selectedModel);
 
   const filteredModels = models.filter((model) =>
-    model.name.toLowerCase().includes(modelSearch.toLowerCase())
+    model.id.toLowerCase().includes(modelSearch.toLowerCase())
   );
 
   useEffect(() => {
@@ -127,7 +127,7 @@ export default function Header({
               }
             }}
           >
-            <span>{selectedModelObj?.name || 'Model'}</span>
+            <span>{selectedModelObj?.id || selectedModel || 'Model'}</span>
             <svg
               className="chevron-icon"
               viewBox="0 0 24 24"
@@ -173,7 +173,7 @@ export default function Header({
                       setModelSearch('');
                     }}
                   >
-                    <span className="provider-name">{model.name}</span>
+                    <span className="provider-name">{model.id}</span>
                     {model.id === selectedModel && (
                       <svg
                         className="checkmark"

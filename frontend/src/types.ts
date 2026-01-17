@@ -20,10 +20,18 @@ export interface Message {
   images?: string[];
   videos?: string[];
   audios?: string[];
+  search_results?: SearchResult[];
   created_at?: string;
   provider?: string;
   model?: string;
   thought_process?: string;
+  thought_signatures?: string[];
+}
+
+export interface SearchResult {
+  title?: string;
+  url: string;
+  content?: string;
 }
 
 export interface Session {
@@ -61,6 +69,26 @@ export interface DoubaoSettings extends DeepSeekSettings {
   max_completion_tokens?: number;
 }
 
+export interface DoubaoSeedreamSettings {
+  size: string;
+  seed?: number;
+  sequential_image_generation: 'auto' | 'disabled';
+  max_images?: number;
+  watermark: boolean;
+  prompt_optimize_mode: 'standard' | 'fast';
+}
+
+export interface DoubaoSeedanceSettings {
+  resolution: '480p' | '720p' | '1080p';
+  ratio: '16:9' | '4:3' | '1:1' | '3:4' | '9:16' | '21:9' | 'adaptive';
+  duration: number;
+  watermark: boolean;
+  generate_audio: boolean;
+  draft: boolean;
+  seed?: number;
+  camera_fixed: boolean;
+}
+
 export interface SiliconFlowSettings extends DeepSeekSettings {
   enable_thinking?: boolean;
   thinking_budget?: number;
@@ -85,7 +113,11 @@ export interface GroqSettings extends DeepSeekSettings {
   max_completion_tokens?: number;
 }
 
-export interface GrokSettings extends DeepSeekSettings {
+export type GrokSettings = DeepSeekSettings;
+
+export interface NvidiaSettings extends DeepSeekSettings {
+  thinking?: boolean;
+  reasoning_effort?: 'low' | 'medium' | 'high';
 }
 
 export interface OpenRouterSettings extends DeepSeekSettings {
@@ -93,6 +125,23 @@ export interface OpenRouterSettings extends DeepSeekSettings {
   models?: string;
   route?: 'fallback' | 'sort';
   include_reasoning?: boolean;
+  repetition_penalty?: number;
+  top_a?: number;
+  logprobs?: boolean;
+  top_logprobs?: number;
+  response_format?: string;
+  structured_outputs?: boolean;
+  parallel_tool_calls?: boolean;
+  reasoning_effort?: 'xhigh' | 'high' | 'medium' | 'low' | 'minimal' | 'none';
+  reasoning_summary?: 'auto' | 'concise' | 'detailed';
+  image_generation?: boolean;
+  image_aspect_ratio?: string;
+  image_size?: '1K' | '2K' | '4K';
+  web_search?: boolean;
+  web_search_results?: number;
+  web_search_engine?: 'native' | 'exa';
+  web_search_prompt?: string;
+  web_search_context_size?: 'low' | 'medium' | 'high';
 }
 
 export interface GeminiSettings extends DeepSeekSettings {
@@ -100,6 +149,21 @@ export interface GeminiSettings extends DeepSeekSettings {
   seed?: number;
   thinking_budget?: number;
   safety_threshold?: 'BLOCK_NONE' | 'BLOCK_LOW_AND_ABOVE' | 'BLOCK_MED_AND_ABOVE' | 'BLOCK_ONLY_HIGH' | 'HARM_BLOCK_THRESHOLD_UNSPECIFIED';
+  thinking_level?: 'minimal' | 'low' | 'medium' | 'high';
+  media_resolution?:
+    | 'MEDIA_RESOLUTION_UNSPECIFIED'
+    | 'MEDIA_RESOLUTION_LOW'
+    | 'MEDIA_RESOLUTION_MEDIUM'
+    | 'MEDIA_RESOLUTION_HIGH';
+  google_search?: boolean;
+  url_context?: boolean;
+  response_modalities?: ('IMAGE' | 'TEXT')[];
+  image_aspect_ratio?: string;
+  image_size?: '1K' | '2K' | '4K';
+  imagen_number_of_images?: number;
+  imagen_image_size?: '1K' | '2K';
+  imagen_aspect_ratio?: '1:1' | '3:4' | '4:3' | '9:16' | '16:9';
+  imagen_person_generation?: 'dont_allow' | 'allow_adult' | 'allow_all';
 }
 
 export interface MistralSettings {
@@ -156,15 +220,84 @@ export interface ChatRequest {
   transforms?: string[];
   models?: string[];
   route?: string;
+  repetition_penalty?: number;
+  top_a?: number;
+  logprobs?: boolean;
+  top_logprobs?: number;
+  response_format?: Record<string, unknown>;
+  structured_outputs?: boolean;
+  parallel_tool_calls?: boolean;
+  reasoning?: Record<string, unknown>;
+  modalities?: string[];
+  image_config?: {
+    aspect_ratio?: string;
+    image_size?: string;
+  };
+  plugins?: Record<string, unknown>[];
+  web_search_options?: {
+    search_context_size?: 'low' | 'medium' | 'high';
+  };
   // Gemini-specific
   seed?: number;
   safety_threshold?: string;
+  thinking_level?: 'minimal' | 'low' | 'medium' | 'high';
+  media_resolution?:
+    | 'MEDIA_RESOLUTION_UNSPECIFIED'
+    | 'MEDIA_RESOLUTION_LOW'
+    | 'MEDIA_RESOLUTION_MEDIUM'
+    | 'MEDIA_RESOLUTION_HIGH';
+  google_search?: boolean;
+  url_context?: boolean;
+  imagen_number_of_images?: number;
+  imagen_image_size?: '1K' | '2K';
+  imagen_aspect_ratio?: '1:1' | '3:4' | '4:3' | '9:16' | '16:9';
+  imagen_person_generation?: 'dont_allow' | 'allow_adult' | 'allow_all';
+  // Doubao Seedream specific
+  sequential_image_generation?: string;
+  max_images?: number;
+  watermark?: boolean;
+  prompt_optimize_mode?: string;
+  size?: string;
+  // Doubao Seedance specific
+  resolution?: string;
+  ratio?: string;
+  duration?: number;
+  generate_audio?: boolean;
+  draft?: boolean;
+  camera_fixed?: boolean;
 }
 
 export interface StreamChunk {
   content?: string;
   reasoning?: string;
+  search_results?: SearchResult[];
   session_id?: number;
   error?: string;
   done?: boolean;
 }
+
+export type SettingsUnion =
+  | DeepSeekSettings
+  | DoubaoSettings
+  | DoubaoSeedreamSettings
+  | DoubaoSeedanceSettings
+  | SiliconFlowSettings
+  | CerebrasSettings
+  | GroqSettings
+  | GrokSettings
+  | NvidiaSettings
+  | OpenRouterSettings
+  | MistralSettings
+  | GeminiSettings;
+
+export type CommonSettingsUnion =
+  | DeepSeekSettings
+  | DoubaoSettings
+  | SiliconFlowSettings
+  | CerebrasSettings
+  | GroqSettings
+  | GrokSettings
+  | NvidiaSettings
+  | OpenRouterSettings
+  | MistralSettings
+  | GeminiSettings;

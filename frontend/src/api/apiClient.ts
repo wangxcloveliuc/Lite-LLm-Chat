@@ -242,30 +242,14 @@ class APIClient {
     }
   }
 
-  async chat(
-    messages: Message[],
-    provider: string,
-    model: string,
-    sessionId?: number,
-    title?: string
-  ): Promise<{ session_id: number; message: Message } | null> {
+  async chat(request: ChatRequest): Promise<{ session_id: number; message: Message } | null> {
     try {
       const response = await fetch(this.url('/chat'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          provider,
-          model,
-          messages: messages.map((m) => ({
-            role: m.role,
-            content: m.content,
-            images: m.images,
-            videos: m.videos,
-            audios: m.audios,
-          })),
+          ...request,
           stream: false,
-          session_id: sessionId,
-          title,
         }),
       });
       if (response.ok) {

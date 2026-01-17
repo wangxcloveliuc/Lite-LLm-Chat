@@ -1,0 +1,48 @@
+/* Responsive Design */
+@media (max-width: 768px) {
+  .sidebar {
+    width: 200px;
+  }
+
+  .greeting h1 {
+    font-size: 24px;
+  }
+
+  .input-container {
+    max-width: 100%;
+  }
+
+  .input-bar {
+    padding: 10px 14px;
+  }
+}
+
+@media (max-width: 640px) {
+  .sidebar {
+    width: 60px;
+    padding: 16px 8px;
+  }
+
+  .sidebar-item span,
+  .session-title {
+    display: none;
+  }
+
+  .sidebar-item,
+  .session-item {
+    justify-content: center;
+    padding: 12px;
+  }
+
+  .greeting h1 {
+    font-size: 20px;
+  }
+
+  .header {
+    padding: 12px 16px;
+  }
+
+  .central-interface {
+    padding: 0 16px;
+  }
+}

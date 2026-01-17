@@ -1,12 +1,15 @@
 from typing import List, Dict, AsyncIterator, Optional, Tuple
 import json
-import base64
-import os
-import mimetypes
+import traceback
+
 from google import genai
 from google.genai import types
 
 from .base import BaseClient
+from .gemini_config import GeminiConfigMixin
+from .gemini_media import GeminiMediaMixin
+from .gemini_messages import GeminiMessagesMixin
+from .gemini_response import GeminiResponseMixin
 
 try:
     from ..config import settings
@@ -14,28 +17,13 @@ except (ImportError, ValueError):
     from config import settings
 
 
-class GeminiClient(BaseClient):
-    # Models that should include thinking_config
-    _THINKING_MODELS = [
-        "gemini-2.5-flash",
-        "gemini-2.5-pro",
-        "gemini-2.5-flash-preview-tts",
-        "gemini-2.5-pro-preview-tts",
-        "gemini-flash-latest",
-        "gemini-flash-lite-latest",
-        "gemini-pro-latest",
-        "gemini-2.5-flash-lite",
-        "gemini-2.5-flash-image-preview",
-        "gemini-2.5-flash-image",
-        "gemini-2.5-flash-preview-09-2025",
-        "gemini-2.5-flash-lite-preview-09-2025",
-        "gemini-3-pro-preview",
-        "gemini-3-flash-preview",
-        "gemini-3-pro-image-preview",
-        "nano-banana-pro-preview",
-        "gemini-2.5-computer-use-preview-10-2025",
-        "deep-research-pro-preview-12-2025",
-    ]
+class GeminiClient(
+    GeminiConfigMixin,
+    GeminiMediaMixin,
+    GeminiMessagesMixin,
+    GeminiResponseMixin,
+    BaseClient,
+):
 
     def __init__(self):
         http_options = None
@@ -51,186 +39,69 @@ class GeminiClient(BaseClient):
             api_key=settings.gemini_api_key,
             http_options=http_options,
         )
+        self._last_thought_signatures: List[str] = []
+        self._last_search_results: List[Dict[str, str]] = []
 
-    def _should_enable_thinking(self, model: str) -> bool:
-        # Check if thinking is explicitly mentioned in model name or in the whitelist
-        lowered_model = model.lower()
-        if "thinking" in lowered_model:
-            return True
-        model_name = model[len("models/"):] if model.startswith("models/") else model
-        return any(model_name.startswith(prefix) for prefix in self._THINKING_MODELS)
+    async def _handle_gemini_image_generation(
+        self,
+        model: str,
+        messages: List[Dict[str, str]],
+        **kwargs,
+    ) -> Tuple[str, str]:
+        contents, system_instruction = self._messages_to_contents_and_system(messages)
+        response_modalities = self._normalize_response_modalities(kwargs.get("modalities"))
+        image_config = self._normalize_image_config(kwargs.get("image_config"))
+        media_resolution = self._normalize_media_resolution(kwargs.get("media_resolution"))
+        thinking_level = (
+            kwargs.get("thinking_level") if self._supports_thinking_level(model) else None
+        )
+        tools = self._merge_tools(
+            self._build_tools(kwargs.get("google_search")),
+            self._build_url_context_tool(kwargs.get("url_context")),
+        )
+        thinking_cfg = (
+            self._types.ThinkingConfig(thinking_level=thinking_level, include_thoughts=True)
+            if thinking_level
+            else None
+        )
 
-    def _get_safety_settings(self, threshold: str) -> List[Dict[str, str]]:
-        if not threshold:
-            return None
-        categories = [
-            "HARM_CATEGORY_HARASSMENT",
-            "HARM_CATEGORY_HATE_SPEECH",
-            "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-            "HARM_CATEGORY_DANGEROUS_CONTENT",
-            "HARM_CATEGORY_CIVIC_INTEGRITY",
-        ]
-        return [{"category": cat, "threshold": threshold} for cat in categories]
+        config = self._types.GenerateContentConfig(
+            temperature=kwargs.get("temperature", 1),
+            max_output_tokens=kwargs.get("max_tokens"),
+            top_p=kwargs.get("top_p"),
+            top_k=kwargs.get("top_k"),
+            presence_penalty=kwargs.get("presence_penalty"),
+            frequency_penalty=kwargs.get("frequency_penalty"),
+            seed=kwargs.get("seed"),
+            system_instruction=system_instruction,
+            response_modalities=response_modalities,
+            image_config=image_config,
+            thinking_config=thinking_cfg,
+            media_resolution=media_resolution,
+            tools=tools,
+        )
 
-    def _messages_to_contents_and_system(self, messages: List[Dict[str, str]]):
-        system_parts: List[str] = []
-        contents: List[Dict[str, object]] = []
+        response = await self._client.aio.models.generate_content(
+            model=model,
+            contents=contents,
+            config=config,
+        )
 
-        for m in messages:
-            role = (m.get("role") or "").lower()
-            content = m.get("content") or ""
+        self._last_thought_signatures = self._extract_thought_signatures(response)
+        self._last_search_results = (
+            self._extract_search_results(response)
+            or self._extract_url_context_results(response)
+        )
 
-            if role == "system":
-                if content:
-                    system_parts.append(content)
-                continue
-
-            # Gemini uses 'user' and 'model'
-            if role == "assistant":
-                g_role = "model"
-            else:
-                g_role = "user"
-
-            if isinstance(content, list):
-                parts = []
-                for part in content:
-                    if part.get("type") == "text":
-                        parts.append({"text": part.get("text") or ""})
-                    elif part.get("type") == "image_url":
-                        url = part.get("image_url", {}).get("url")
-                        if url and url.startswith("/uploads/"):
-                            try:
-                                current_dir = os.path.dirname(os.path.abspath(__file__))
-                                backend_dir = os.path.dirname(current_dir)
-                                relative_path = url.lstrip("/")
-                                local_path = os.path.join(backend_dir, relative_path)
-                                
-                                if os.path.exists(local_path):
-                                    mime_type, _ = mimetypes.guess_type(local_path)
-                                    if not mime_type:
-                                        mime_type = "image/jpeg"
-                                    with open(local_path, "rb") as image_file:
-                                        parts.append({
-                                            "inline_data": {
-                                                "mime_type": mime_type,
-                                                "data": base64.b64encode(image_file.read()).decode('utf-8')
-                                            }
-                                        })
-                                else:
-                                    print(f"[GeminiClient] Image not found: {local_path}")
-                            except Exception as e:
-                                print(f"[GeminiClient] Error reading image {url}: {e}")
-                    elif part.get("type") == "video_url":
-                        url = part.get("video_url", {}).get("url")
-                        if url and url.startswith("/uploads/"):
-                            try:
-                                current_dir = os.path.dirname(os.path.abspath(__file__))
-                                backend_dir = os.path.dirname(current_dir)
-                                relative_path = url.lstrip("/")
-                                local_path = os.path.join(backend_dir, relative_path)
-                                
-                                if os.path.exists(local_path):
-                                    mime_type, _ = mimetypes.guess_type(local_path)
-                                    if not mime_type:
-                                        mime_type = "video/mp4"
-                                    with open(local_path, "rb") as video_file:
-                                        parts.append({
-                                            "inline_data": {
-                                                "mime_type": mime_type,
-                                                "data": base64.b64encode(video_file.read()).decode('utf-8')
-                                            }
-                                        })
-                                else:
-                                    print(f"[GeminiClient] Video not found: {local_path}")
-                            except Exception as e:
-                                print(f"[GeminiClient] Error reading video {url}: {e}")
-                    elif part.get("type") == "audio_url":
-                        url = part.get("audio_url", {}).get("url")
-                        if url and url.startswith("/uploads/"):
-                            try:
-                                current_dir = os.path.dirname(os.path.abspath(__file__))
-                                backend_dir = os.path.dirname(current_dir)
-                                relative_path = url.lstrip("/")
-                                local_path = os.path.join(backend_dir, relative_path)
-                                
-                                if os.path.exists(local_path):
-                                    mime_type, _ = mimetypes.guess_type(local_path)
-                                    if not mime_type:
-                                        mime_type = "audio/mpeg"
-                                    with open(local_path, "rb") as audio_file:
-                                        parts.append({
-                                            "inline_data": {
-                                                "mime_type": mime_type,
-                                                "data": base64.b64encode(audio_file.read()).decode('utf-8')
-                                            }
-                                        })
-                                else:
-                                    print(f"[GeminiClient] Audio not found: {local_path}")
-                            except Exception as e:
-                                print(f"[GeminiClient] Error reading audio {url}: {e}")
-                        elif url and url.startswith("http"):
-                             # Gemini google-genai SDK might not support remote URLs in inline_data easily
-                             # For now, we skip or could fetch + base64 if needed.
-                             pass
-                contents.append(
-                    {
-                        "role": g_role,
-                        "parts": parts,
-                    }
-                )
-            else:
-                contents.append(
-                    {
-                        "role": g_role,
-                        "parts": [{"text": content}],
-                    }
-                )
-
-        system_instruction = "\n".join(system_parts).strip() or None
-        return contents, system_instruction
-
-    def _extract_text_and_reasoning(self, response) -> Tuple[str, str]:
-        # Extract both thinking and regular text parts from the response in a single pass
-        try:
-            candidates = getattr(response, "candidates", None) or []
-            if not candidates:
-                return "", ""
-
-            content = getattr(candidates[0], "content", None)
-            parts = getattr(content, "parts", None) or []
-
-            reasoning_parts: List[str] = []
-            text_parts: List[str] = []
-            
-            for p in parts:
-                text = getattr(p, "text", None)
-                if not text:
-                    continue
-                    
-                has_thought = getattr(p, "thought", None)
-                if has_thought is True:
-                    # This is a thinking part
-                    reasoning_parts.append(text)
-                else:
-                    # This is a regular text part (thought is None, False, or missing)
-                    text_parts.append(text)
-
-            reasoning = "\n".join([x for x in reasoning_parts if x])
-            content_text = "".join([x for x in text_parts if x])
-            return content_text, reasoning
-        except Exception as e:
-            print(f"Error extracting text and reasoning: {e}")
-            return "", ""
-
-    def _extract_reasoning_from_response(self, response) -> str:
-        # Backward compatibility wrapper
-        _, reasoning = self._extract_text_and_reasoning(response)
-        return reasoning
-
-    def _extract_regular_text_from_response(self, response) -> str:
-        # Backward compatibility wrapper
-        text, _ = self._extract_text_and_reasoning(response)
-        return text
+        text = self._extract_regular_text_from_response(response)
+        images = self._extract_inline_images(response)
+        saved_urls = [self._save_generated_image(img, mime) for img, mime in images]
+        markdown = "\n\n".join([f"![image]({url})" for url in saved_urls if url])
+        if text and markdown:
+            content = f"{text}\n\n{markdown}"
+        else:
+            content = text or markdown
+        return content, ""
 
     async def stream_chat(
         self,
@@ -241,23 +112,51 @@ class GeminiClient(BaseClient):
         **kwargs,
     ) -> AsyncIterator[str]:
         try:
+            self._last_thought_signatures = []
+            self._last_search_results = []
+            if self._is_imagen_model(model):
+                content, _reasoning = await self._handle_imagen(model, messages, **kwargs)
+                if content:
+                    yield f"data: {json.dumps({'content': content})}\n\n"
+                yield f"data: {json.dumps({'done': True})}\n\n"
+                return
+            if self._is_gemini_image_model(model):
+                content, _reasoning = await self._handle_gemini_image_generation(model, messages, **kwargs)
+                if content:
+                    yield f"data: {json.dumps({'content': content})}\n\n"
+                yield f"data: {json.dumps({'done': True})}\n\n"
+                return
             contents, system_instruction = self._messages_to_contents_and_system(messages)
 
             # Only enable thinking for specific models
             enable_thinking = self._should_enable_thinking(model)
-            
+            thinking_level = (
+                kwargs.get("thinking_level") if self._supports_thinking_level(model) else None
+            )
+            media_resolution = self._normalize_media_resolution(kwargs.get("media_resolution"))
+            tools = self._merge_tools(
+                self._build_tools(kwargs.get("google_search")),
+                self._build_url_context_tool(kwargs.get("url_context")),
+            )
+
             thinking_budget = kwargs.get("thinking_budget")
             if thinking_budget is None:
-                thinking_budget = -1 # Default to unlimited if model supports it
-                
-            thinking_cfg = (
-                self._types.ThinkingConfig(
+                thinking_budget = -1  # Default to unlimited if model supports it
+
+            if thinking_level:
+                thinking_cfg = self._types.ThinkingConfig(
+                    thinking_level=thinking_level,
                     include_thoughts=True,
-                    thinking_budget=thinking_budget,
                 )
-                if enable_thinking
-                else None
-            )
+            else:
+                thinking_cfg = (
+                    self._types.ThinkingConfig(
+                        include_thoughts=True,
+                        thinking_budget=thinking_budget,
+                    )
+                    if enable_thinking
+                    else None
+                )
 
             # Safety settings
             safety_threshold = kwargs.get("safety_threshold")
@@ -280,6 +179,8 @@ class GeminiClient(BaseClient):
                 system_instruction=system_instruction,
                 thinking_config=thinking_cfg,
                 safety_settings=safety_settings,
+                media_resolution=media_resolution,
+                tools=tools,
             )
 
             # The SDK provides async streaming under client.aio
@@ -288,6 +189,15 @@ class GeminiClient(BaseClient):
                 contents=contents,
                 config=config,
             ):
+                search_results = self._extract_search_results(chunk)
+                if not search_results:
+                    search_results = self._extract_url_context_results(chunk)
+                if search_results:
+                    self._last_search_results = search_results
+                    yield f"data: {json.dumps({'search_results': search_results})}\n\n"
+                signatures = self._extract_thought_signatures(chunk)
+                if signatures:
+                    self._last_thought_signatures = signatures
                 reasoning = self._extract_reasoning_from_response(chunk)
                 if reasoning:
                     yield f"data: {json.dumps({'reasoning': reasoning})}\n\n"
@@ -312,23 +222,40 @@ class GeminiClient(BaseClient):
         **kwargs,
     ) -> Tuple[str, str]:
         try:
+            self._last_thought_signatures = []
+            self._last_search_results = []
+            if self._is_imagen_model(model):
+                return await self._handle_imagen(model, messages, **kwargs)
+            if self._is_gemini_image_model(model):
+                return await self._handle_gemini_image_generation(model, messages, **kwargs)
             contents, system_instruction = self._messages_to_contents_and_system(messages)
 
             # Only enable thinking for specific models
             enable_thinking = self._should_enable_thinking(model)
-            
+            thinking_level = (
+                kwargs.get("thinking_level") if self._supports_thinking_level(model) else None
+            )
+            media_resolution = self._normalize_media_resolution(kwargs.get("media_resolution"))
+            tools = self._build_tools(kwargs.get("google_search"))
+
             thinking_budget = kwargs.get("thinking_budget")
             if thinking_budget is None:
-                thinking_budget = -1 # Default to unlimited if model supports it
-                
-            thinking_cfg = (
-                self._types.ThinkingConfig(
+                thinking_budget = -1  # Default to unlimited if model supports it
+
+            if thinking_level:
+                thinking_cfg = self._types.ThinkingConfig(
+                    thinking_level=thinking_level,
                     include_thoughts=True,
-                    thinking_budget=thinking_budget,
                 )
-                if enable_thinking
-                else None
-            )
+            else:
+                thinking_cfg = (
+                    self._types.ThinkingConfig(
+                        include_thoughts=True,
+                        thinking_budget=thinking_budget,
+                    )
+                    if enable_thinking
+                    else None
+                )
 
             # Safety settings
             safety_threshold = kwargs.get("safety_threshold")
@@ -351,6 +278,8 @@ class GeminiClient(BaseClient):
                 system_instruction=system_instruction,
                 thinking_config=thinking_cfg,
                 safety_settings=safety_settings,
+                media_resolution=media_resolution,
+                tools=tools,
             )
 
             response = await self._client.aio.models.generate_content(
@@ -359,11 +288,77 @@ class GeminiClient(BaseClient):
                 config=config,
             )
 
+            self._last_thought_signatures = self._extract_thought_signatures(response)
+            self._last_search_results = (
+                self._extract_search_results(response)
+                or self._extract_url_context_results(response)
+            )
+
             content = self._extract_regular_text_from_response(response)
             reasoning = self._extract_reasoning_from_response(response)
             return content, reasoning
         except Exception as e:
             raise Exception(f"Gemini API error: {str(e)}")
+
+    async def _handle_imagen(
+        self,
+        model: str,
+        messages: List[Dict[str, str]],
+        **kwargs,
+    ) -> Tuple[str, str]:
+        prompt = ""
+        for msg in reversed(messages):
+            if msg.get("role") != "user":
+                continue
+            content = msg.get("content")
+            if isinstance(content, str):
+                prompt = content
+            elif isinstance(content, list):
+                for part in content:
+                    if part.get("type") == "text":
+                        prompt = part.get("text", "")
+                        break
+            if prompt:
+                break
+
+        config = self._normalize_imagen_config(self._build_imagen_config(kwargs))
+        try:
+            print(
+                f"[GeminiClient] Imagen request model={model}, prompt_len={len(prompt)}, config={config}"
+            )
+            response = self._client.models.generate_images(
+                model=model,
+                prompt=prompt,
+                config=config,
+            )
+
+            images = getattr(response, "images", None)
+            if images is None and hasattr(response, "generated_images"):
+                images = getattr(response, "generated_images")
+            if images is None and isinstance(response, dict):
+                images = response.get("images") or response.get("generated_images")
+
+            content = self._format_image_markdown(images)
+            if not content and images:
+                saved_urls = []
+                for image in images:
+                    image_obj = getattr(image, "image", None) or image
+                    image_bytes = getattr(image_obj, "image_bytes", None)
+                    mime_type = getattr(image_obj, "mime_type", None)
+                    if image_bytes:
+                        saved_url = self._save_generated_image(image_bytes, mime_type)
+                        if saved_url:
+                            saved_urls.append(saved_url)
+                if saved_urls:
+                    content = "\n\n".join([f"![image]({url})" for url in saved_urls])
+            if not content:
+                print(f"[GeminiClient] Imagen response missing images: {response}")
+            return content, ""
+        except Exception as e:
+            print(
+                f"[GeminiClient] Imagen generation failed for model={model}: {e}\n{traceback.format_exc()}"
+            )
+            raise Exception(f"Gemini Imagen error: {str(e)}")
 
     def list_models(self) -> List[str]:
         try:

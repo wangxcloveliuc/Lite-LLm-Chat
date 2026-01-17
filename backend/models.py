@@ -54,9 +54,11 @@ class MessageResponse(BaseModel):
     images: Optional[List[str]] = None
     videos: Optional[List[str]] = None
     audios: Optional[List[str]] = None
+    search_results: Optional[List[dict]] = None
     provider: Optional[str] = None
     model: Optional[str] = None
     thought_process: Optional[str] = None
+    thought_signatures: Optional[List[str]] = None
     created_at: datetime
 
     class Config:
@@ -110,7 +112,7 @@ class ChatRequest(BaseModel):
     message_provider: Optional[str] = None
     message_model: Optional[str] = None
     stream: bool = True
-    temperature: float = Field(default=0.7, ge=0.0, le=2.0)
+    temperature: float = Field(default=1.0, ge=0.0, le=2.0)
     max_tokens: Optional[int] = Field(default=None, ge=1)
     frequency_penalty: float = Field(default=0.0, ge=-2.0, le=2.0)
     presence_penalty: float = Field(default=0.0, ge=-2.0, le=2.0)
@@ -136,9 +138,54 @@ class ChatRequest(BaseModel):
     thinking_budget: Optional[int] = Field(default=None, ge=128, le=32768)
     min_p: Optional[float] = Field(default=None, ge=0.0, le=1.0)
     top_k: Optional[float] = Field(default=None)
+    # OpenRouter-specific
+    transforms: Optional[List[str]] = None
+    models: Optional[List[str]] = None
+    route: Optional[str] = None
+    repetition_penalty: Optional[float] = Field(default=None, ge=0.0, le=2.0)
+    top_a: Optional[float] = Field(default=None, ge=0.0, le=1.0)
+    logprobs: Optional[bool] = None
+    top_logprobs: Optional[int] = Field(default=None, ge=0, le=20)
+    response_format: Optional[dict] = None
+    structured_outputs: Optional[bool] = None
+    parallel_tool_calls: Optional[bool] = None
+    reasoning: Optional[dict] = None
+    modalities: Optional[List[str]] = None
+    image_config: Optional[dict] = None
+    plugins: Optional[List[dict]] = None
+    web_search_options: Optional[dict] = None
     # Mistral specific
     safe_prompt: Optional[bool] = None
     random_seed: Optional[int] = None
+    # Gemini Imagen specific
+    imagen_number_of_images: Optional[int] = Field(default=None, ge=1, le=4)
+    imagen_image_size: Optional[str] = Field(default=None, pattern="^(1K|2K)$")
+    imagen_aspect_ratio: Optional[str] = Field(default=None, pattern="^(1:1|3:4|4:3|9:16|16:9)$")
+    imagen_person_generation: Optional[str] = Field(
+        default=None, pattern="^(dont_allow|allow_adult|allow_all)$"
+    )
+    # Gemini 3 specific
+    thinking_level: Optional[str] = Field(default=None, pattern="^(minimal|low|medium|high)$")
+    media_resolution: Optional[str] = Field(
+        default=None,
+        pattern="^(MEDIA_RESOLUTION_UNSPECIFIED|MEDIA_RESOLUTION_LOW|MEDIA_RESOLUTION_MEDIUM|MEDIA_RESOLUTION_HIGH)$",
+    )
+    google_search: Optional[bool] = None
+    url_context: Optional[bool] = None
+    # Doubao Seedream specific
+    sequential_image_generation: Optional[str] = None
+    max_images: Optional[int] = None
+    watermark: Optional[bool] = None
+    prompt_optimize_mode: Optional[str] = None
+    size: Optional[str] = None
+    seed: Optional[int] = None
+    # Doubao Seedance specific
+    resolution: Optional[str] = None
+    ratio: Optional[str] = None
+    duration: Optional[int] = None
+    generate_audio: Optional[bool] = None
+    draft: Optional[bool] = None
+    camera_fixed: Optional[bool] = None
 
 
 class ChatResponse(BaseModel):

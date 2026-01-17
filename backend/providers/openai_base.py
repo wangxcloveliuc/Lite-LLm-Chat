@@ -51,6 +51,114 @@ class OpenAICompatibleClient(BaseClient):
         
         return ""
 
+    def _format_image_markdown(self, images) -> str:
+        """Convert image outputs to markdown for downstream localization/display."""
+        if not images:
+            return ""
+
+        def _extract_url(image_obj) -> str:
+            if isinstance(image_obj, dict):
+                image_url = image_obj.get("image_url") or image_obj.get("imageUrl") or {}
+                if isinstance(image_url, dict):
+                    return image_url.get("url", "") or image_url.get("uri", "")
+                return image_url or ""
+            image_url = getattr(image_obj, "image_url", None) or getattr(image_obj, "imageUrl", None)
+            if isinstance(image_url, dict):
+                return image_url.get("url", "") or image_url.get("uri", "")
+            if image_url:
+                return image_url
+            return getattr(image_obj, "url", "") or ""
+
+        urls = [_extract_url(image) for image in images]
+        return "\n\n".join([f"![image]({url})" for url in urls if url])
+
+    def _normalize_search_results(self, results) -> List[Dict[str, str]]:
+        if not results:
+            return []
+
+        if isinstance(results, dict):
+            if "results" in results:
+                results = results.get("results")
+            elif "items" in results:
+                results = results.get("items")
+            elif "data" in results:
+                results = results.get("data")
+            else:
+                results = [results]
+
+        normalized: List[Dict[str, str]] = []
+        if isinstance(results, list):
+            for item in results:
+                if isinstance(item, str):
+                    if item.startswith("http"):
+                        normalized.append({"url": item, "title": item})
+                    continue
+                if not isinstance(item, dict):
+                    continue
+                url = item.get("url") or item.get("link") or item.get("href") or item.get("source")
+                if not url:
+                    continue
+                title = item.get("title") or item.get("name") or item.get("source") or url
+                content = item.get("content") or item.get("snippet") or item.get("description")
+                entry = {"url": url, "title": title}
+                if content:
+                    entry["content"] = content
+                normalized.append(entry)
+
+        return normalized
+
+    def _extract_search_results(self, msg_or_delta) -> List[Dict[str, str]]:
+        if msg_or_delta is None:
+            return []
+
+        candidate_values = []
+        annotations = None
+        if isinstance(msg_or_delta, dict):
+            for field in ["search_results", "citations", "sources"]:
+                if field in msg_or_delta:
+                    candidate_values.append(msg_or_delta.get(field))
+            annotations = msg_or_delta.get("annotations")
+        else:
+            for field in ["search_results", "citations", "sources"]:
+                if hasattr(msg_or_delta, field):
+                    candidate_values.append(getattr(msg_or_delta, field))
+            annotations = getattr(msg_or_delta, "annotations", None)
+            extra = getattr(msg_or_delta, "model_extra", None)
+            if isinstance(extra, dict):
+                for field in ["search_results", "citations", "sources"]:
+                    if field in extra:
+                        candidate_values.append(extra.get(field))
+                if "annotations" in extra and annotations is None:
+                    annotations = extra.get("annotations")
+
+        if isinstance(annotations, list):
+            url_citations = []
+            for annotation in annotations:
+                if not isinstance(annotation, dict):
+                    continue
+                if annotation.get("type") != "url_citation":
+                    continue
+                citation = annotation.get("url_citation") or {}
+                if not isinstance(citation, dict):
+                    continue
+                url = citation.get("url")
+                if not url:
+                    continue
+                entry = {
+                    "url": url,
+                    "title": citation.get("title") or url,
+                }
+                if citation.get("content"):
+                    entry["content"] = citation.get("content")
+                url_citations.append(entry)
+            if url_citations:
+                candidate_values.append(url_citations)
+
+        normalized: List[Dict[str, str]] = []
+        for value in candidate_values:
+            normalized.extend(self._normalize_search_results(value))
+        return normalized
+
     def _process_messages(
         self,
         messages: List[Dict],
@@ -190,11 +298,17 @@ class OpenAICompatibleClient(BaseClient):
                 "include_reasoning", "max_completion_tokens", "enable_thinking", 
                 "thinking_budget", "min_p", "top_k",
                 # OpenRouter-specific
-                "transforms", "models", "route"
+                "transforms", "models", "route", "repetition_penalty", "top_a", "logprobs",
+                "top_logprobs", "response_format", "structured_outputs", "parallel_tool_calls",
+                "reasoning", "modalities", "image_config", "plugins"
             ]
 
             # For OpenRouter, we might want to keep some of these in extra_body
-            or_keys = ["transforms", "models", "route"]
+            or_keys = [
+                "transforms", "models", "route", "repetition_penalty", "top_a", "logprobs",
+                "top_logprobs", "response_format", "structured_outputs", "parallel_tool_calls",
+                "reasoning", "modalities", "image_config", "plugins"
+            ]
             _extra_body = extra_body.copy() if extra_body else {}
             for key in or_keys:
                 if key in sanitized_kwargs:
@@ -241,6 +355,21 @@ class OpenAICompatibleClient(BaseClient):
 
             msg = response.choices[0].message
             content = msg.content or ""
+            image_markdown = self._format_image_markdown(getattr(msg, "images", None))
+            if image_markdown:
+                content = f"{content}\n\n{image_markdown}" if content else image_markdown
+            search_results = self._extract_search_results(msg)
+            if search_results:
+                sources = "\n".join(
+                    [
+                        f"- [{item.get('title') or item.get('url')}]({item.get('url')})"
+                        + (f" — {item.get('content')}" if item.get("content") else "")
+                        for item in search_results
+                        if item.get("url")
+                    ]
+                )
+                if sources:
+                    content = f"{content}\n\nSources:\n{sources}" if content else f"Sources:\n{sources}"
             reasoning = self._extract_reasoning(msg)
             return content, reasoning
         except Exception as e:
@@ -270,11 +399,17 @@ class OpenAICompatibleClient(BaseClient):
                 "include_reasoning", "max_completion_tokens", "enable_thinking", 
                 "thinking_budget", "min_p", "top_k",
                 # OpenRouter-specific
-                "transforms", "models", "route"
+                "transforms", "models", "route", "repetition_penalty", "top_a", "logprobs",
+                "top_logprobs", "response_format", "structured_outputs", "parallel_tool_calls",
+                "reasoning", "modalities", "image_config", "plugins"
             ]
 
             # For OpenRouter, we might want to keep some of these in extra_body
-            or_keys = ["transforms", "models", "route"]
+            or_keys = [
+                "transforms", "models", "route", "repetition_penalty", "top_a", "logprobs",
+                "top_logprobs", "response_format", "structured_outputs", "parallel_tool_calls",
+                "reasoning", "modalities", "image_config", "plugins"
+            ]
             _extra_body = extra_body.copy() if extra_body else {}
             for key in or_keys:
                 if key in sanitized_kwargs:
@@ -316,10 +451,18 @@ class OpenAICompatibleClient(BaseClient):
                 **sanitized_kwargs,
             )
 
+            search_results_sent = False
+            search_results_buffer: List[Dict[str, str]] = []
             for chunk in response:
                 if not chunk.choices:
                     continue
                 delta = chunk.choices[0].delta
+
+                search_results = self._extract_search_results(delta)
+                if search_results:
+                    search_results_buffer.extend(search_results)
+                    search_results_sent = True
+                    yield f"data: {json.dumps({'search_results': search_results})}\n\n"
 
                 reasoning = self._extract_reasoning(delta)
                 if reasoning:
@@ -328,6 +471,13 @@ class OpenAICompatibleClient(BaseClient):
                 if getattr(delta, "content", None):
                     content = delta.content
                     yield f"data: {json.dumps({'content': content})}\n\n"
+
+                image_markdown = self._format_image_markdown(getattr(delta, "images", None))
+                if image_markdown:
+                    yield f"data: {json.dumps({'content': image_markdown})}\n\n"
+
+            if search_results_buffer and not search_results_sent:
+                yield f"data: {json.dumps({'search_results': search_results_buffer})}\n\n"
 
             yield f"data: {json.dumps({'done': True})}\n\n"
 

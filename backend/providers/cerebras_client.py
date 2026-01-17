@@ -39,6 +39,10 @@ class CerebrasClient(OpenAICompatibleClient):
         disable_reasoning = sanitized_kwargs.pop("disable_reasoning", None)
         if "zai" in model.lower() and disable_reasoning is not None:
             extra_body["disable_reasoning"] = disable_reasoning
+
+        # For qwen-3-32b models, ensure reasoning_format is set to 'parsed'
+        if "qwen-3-32b" in model.lower():
+            extra_body["reasoning_format"] = "parsed"
             
         if extra_body:
             sanitized_kwargs["extra_body"] = extra_body

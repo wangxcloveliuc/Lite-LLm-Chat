@@ -1,11 +1,9 @@
 import React, { useRef } from 'react';
-import type { DeepSeekSettings, DoubaoSettings, SiliconFlowSettings, CerebrasSettings, GroqSettings, GrokSettings, OpenRouterSettings, MistralSettings, GeminiSettings } from '../types';
+import type { DeepSeekSettings, SettingsUnion, CommonSettingsUnion } from '../types';
 import { useSidebarDismiss } from './settingsSidebar/useSidebarDismiss';
 import ProviderSpecificSettings from './settingsSidebar/ProviderSpecificSettings';
 import VisionSettingsSection from './settingsSidebar/VisionSettingsSection';
 import CommonSettingsSection from './settingsSidebar/CommonSettingsSection';
-
-type SettingsUnion = DeepSeekSettings | DoubaoSettings | SiliconFlowSettings | CerebrasSettings | GroqSettings | GrokSettings | OpenRouterSettings | MistralSettings | GeminiSettings;
 
 interface SettingsSidebarProps {
   isOpen: boolean;
@@ -36,9 +34,13 @@ const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
   const isCerebras = provider === 'cerebras';
   const isGroq = provider === 'groq';
   const isGrok = provider === 'grok';
+  const isNvidia = provider === 'nvidia';
   const isOpenRouter = provider === 'openrouter';
   const isMistral = provider === 'mistral';
   const isGemini = provider === 'gemini';
+  const isGeminiImagen = isGemini && modelId.toLowerCase().startsWith('imagen-');
+  const isSeedream = isDoubao && modelId.toLowerCase().includes('seedream');
+  const isSeedance = isDoubao && modelId.toLowerCase().includes('seedance');
 
   const handleChange = (field: string, value: unknown) => {
     onSettingsChange({
@@ -72,15 +74,17 @@ const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
       </div>
 
       <div className="settings-content" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-        {isDeepSeek || isDoubao || isSiliconFlow || isCerebras || isGroq || isGrok || isOpenRouter || isMistral || isGemini ? (
+        {isSeedream || isSeedance || isGeminiImagen ? (
+          <ProviderSpecificSettings provider={provider} modelId={modelId} settings={settings} handleChange={handleChange} />
+        ) : isDeepSeek || isDoubao || isSiliconFlow || isCerebras || isGroq || isGrok || isNvidia || isOpenRouter || isMistral || isGemini ? (
           <>
             <ProviderSpecificSettings provider={provider} modelId={modelId} settings={settings} handleChange={handleChange} />
 
-            {((!isCerebras && !isDeepSeek && !isGroq && !isGrok && !isOpenRouter && !isMistral && !isGemini) || (isGroq && (modelId.toLowerCase().includes('scout') || modelId.toLowerCase().includes('maverick')))) && (
+            {((!isCerebras && !isDeepSeek && !isGroq && !isGrok && !isNvidia && !isOpenRouter && !isMistral && !isGemini) || (isGroq && (modelId.toLowerCase().includes('scout') || modelId.toLowerCase().includes('maverick')))) && (
               <VisionSettingsSection settings={deepseekSettings} handleChange={handleChange} />
             )}
             <CommonSettingsSection 
-              settings={settings} 
+              settings={settings as CommonSettingsUnion} 
               deepseekSettings={deepseekSettings} 
               isCerebras={isCerebras} 
               modelId={modelId}

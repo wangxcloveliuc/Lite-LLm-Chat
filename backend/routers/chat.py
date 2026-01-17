@@ -1,7 +1,6 @@
 import asyncio
 import json
 from datetime import datetime, timezone
-from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
@@ -11,45 +10,18 @@ from config import settings
 from database import ChatMessage, ChatSession, get_db
 from models import ChatRequest, ChatResponse, MessageResponse
 from provider_registry import get_provider
+from .chat_helpers import (
+    _build_provider_kwargs,
+    _ensure_list,
+    _extract_think_tag,
+    _format_api_content,
+    _localize_markdown_images,
+    _localize_streaming_content,
+    _strip_think_stream,
+)
 
 
 router = APIRouter()
-
-
-def _ensure_list(data):
-    if data is None:
-        return None
-    if isinstance(data, str):
-        try:
-            return json.loads(data)
-        except Exception:
-            return [data] if data else []
-    return data
-
-
-def _format_api_content(
-    content: str,
-    images: Optional[List[str]],
-    videos: Optional[List[str]] = None,
-    audios: Optional[List[str]] = None,
-):
-    images = _ensure_list(images)
-    videos = _ensure_list(videos)
-    audios = _ensure_list(audios)
-    if not images and not videos and not audios:
-        return content
-
-    parts = [{"type": "text", "text": content}]
-    if images:
-        for img_url in images:
-            parts.append({"type": "image_url", "image_url": {"url": img_url}})
-    if videos:
-        for video_url in videos:
-            parts.append({"type": "video_url", "video_url": {"url": video_url}})
-    if audios:
-        for audio_url in audios:
-            parts.append({"type": "audio_url", "audio_url": {"url": audio_url}})
-    return parts
 
 
 @router.post(f"{settings.api_prefix}/chat")
@@ -121,6 +93,7 @@ async def chat_completion(
                 getattr(m, "videos", None),
                 getattr(m, "audios", None),
             ),
+            "thought_signatures": _ensure_list(getattr(m, "thought_signatures", None)),
         }
         for m in existing_messages
     ] + [
@@ -161,50 +134,14 @@ async def chat_completion(
             full_response = ""
             full_reasoning = ""
             failed = False
+            think_state = {"pending": "", "in_think": False}
+            search_results_buffer = []
             try:
-                provider_kwargs = {
-                    "temperature": chat_request.temperature,
-                    "max_tokens": chat_request.max_tokens,
-                    "frequency_penalty": chat_request.frequency_penalty,
-                    "presence_penalty": chat_request.presence_penalty,
-                    "top_p": chat_request.top_p,
-                    "stop": chat_request.stop,
-                }
-
-                if chat_request.thinking is not None:
-                    provider_kwargs["thinking"] = chat_request.thinking
-                if chat_request.reasoning_effort is not None:
-                    provider_kwargs["reasoning_effort"] = chat_request.reasoning_effort
-                if chat_request.disable_reasoning is not None:
-                    provider_kwargs["disable_reasoning"] = chat_request.disable_reasoning
-                if chat_request.reasoning_format is not None:
-                    provider_kwargs["reasoning_format"] = chat_request.reasoning_format
-                if chat_request.include_reasoning is not None:
-                    provider_kwargs["include_reasoning"] = chat_request.include_reasoning
-                if chat_request.max_completion_tokens is not None:
-                    provider_kwargs["max_completion_tokens"] = chat_request.max_completion_tokens
-                if chat_request.enable_thinking is not None:
-                    provider_kwargs["enable_thinking"] = chat_request.enable_thinking
-                if chat_request.thinking_budget is not None:
-                    provider_kwargs["thinking_budget"] = chat_request.thinking_budget
-                if chat_request.min_p is not None:
-                    provider_kwargs["min_p"] = chat_request.min_p
-                if chat_request.top_k is not None:
-                    provider_kwargs["top_k"] = chat_request.top_k
-                if chat_request.safe_prompt is not None:
-                    provider_kwargs["safe_prompt"] = chat_request.safe_prompt
-                if chat_request.random_seed is not None:
-                    provider_kwargs["random_seed"] = chat_request.random_seed
-                if chat_request.image_detail is not None:
-                    provider_kwargs["image_detail"] = chat_request.image_detail
-                if chat_request.image_pixel_limit is not None:
-                    provider_kwargs["image_pixel_limit"] = chat_request.image_pixel_limit.model_dump(exclude_none=True)
-                if chat_request.fps is not None:
-                    provider_kwargs["fps"] = chat_request.fps
-                if chat_request.video_detail is not None:
-                    provider_kwargs["video_detail"] = chat_request.video_detail
-                if chat_request.max_frames is not None:
-                    provider_kwargs["max_frames"] = chat_request.max_frames
+                provider_kwargs = _build_provider_kwargs(chat_request)
+                if provider_id not in ("openrouter", "gemini"):
+                    provider_kwargs.pop("reasoning", None)
+                    provider_kwargs.pop("modalities", None)
+                    provider_kwargs.pop("image_config", None)
 
                 stream = provider_client.stream_chat(
                     model=model_id,
@@ -232,23 +169,58 @@ async def chat_completion(
                         except asyncio.CancelledError:
                             return
 
+                        try:
+                            chunk_data = json.loads(chunk[6:])
+                            extra_chunk = None
+                            skip_chunk = False
+                            if "search_results" in chunk_data:
+                                chunk_results = chunk_data.get("search_results") or []
+                                if isinstance(chunk_results, list):
+                                    search_results_buffer.extend(chunk_results)
+                                else:
+                                    search_results_buffer.append(chunk_results)
+                            if "content" in chunk_data:
+                                content_val = chunk_data["content"]
+                                content_val, modified = await _localize_streaming_content(content_val)
+                                if modified:
+                                    chunk_data["content"] = content_val
+                                    chunk = f"data: {json.dumps(chunk_data)}\n\n"
+
+                                content_val, think_text = _strip_think_stream(content_val, think_state)
+                                reasoning_delta = ""
+                                if "reasoning" in chunk_data:
+                                    reasoning_delta += chunk_data.pop("reasoning")
+                                if think_text:
+                                    reasoning_delta += think_text
+                                if reasoning_delta:
+                                    full_reasoning += reasoning_delta
+                                    extra_chunk = f"data: {json.dumps({'reasoning': reasoning_delta})}\n\n"
+                                if content_val != chunk_data.get("content"):
+                                    chunk_data["content"] = content_val
+                                    chunk = f"data: {json.dumps(chunk_data)}\n\n"
+
+                                if not content_val and not reasoning_delta:
+                                    skip_chunk = True
+
+                                full_response += content_val
+                            elif "reasoning" in chunk_data:
+                                full_reasoning += chunk_data["reasoning"]
+                            if "error" in chunk_data:
+                                failed = True
+                                yield chunk  # Send the error chunk
+                                break
+                        except Exception as e:
+                            print(f"Error processing chunk: {e}")
+                            pass
+                        if extra_chunk:
+                            yield extra_chunk
+                            await asyncio.sleep(0)
+                        if skip_chunk:
+                            next_chunk_task = asyncio.ensure_future(stream.__anext__())
+                            continue
                         yield chunk
                         await asyncio.sleep(0)
-
                         next_chunk_task = asyncio.ensure_future(stream.__anext__())
-
-                        if chunk.startswith("data: "):
-                            try:
-                                data = json.loads(chunk[6:])
-                                if "content" in data:
-                                    full_response += data["content"]
-                                if "reasoning" in data:
-                                    full_reasoning += data["reasoning"]
-                                if "error" in data:
-                                    failed = True
-                                    break
-                            except Exception:
-                                pass
                 finally:
                     if next_chunk_task is not None and not next_chunk_task.done():
                         next_chunk_task.cancel()
@@ -259,6 +231,18 @@ async def chat_completion(
                             await aclose()
                         except Exception:
                             pass
+
+                if not client_gone and think_state.get("pending"):
+                    pending_text = think_state.get("pending", "")
+                    if think_state.get("in_think"):
+                        full_reasoning += pending_text
+                        pending_chunk = f"data: {json.dumps({'reasoning': pending_text})}\n\n"
+                    else:
+                        full_response += pending_text
+                        pending_chunk = f"data: {json.dumps({'content': pending_text})}\n\n"
+                    yield pending_chunk
+                    await asyncio.sleep(0)
+                    think_state["pending"] = ""
 
                 if client_gone:
                     return
@@ -272,11 +256,23 @@ async def chat_completion(
 
             try:
                 if full_response:
+                    full_response, _ = await _localize_markdown_images(full_response)
+                    thought_signatures = None
+                    search_results = search_results_buffer or None
+                    if provider_id == "gemini":
+                        thought_signatures = getattr(provider_client.client, "_last_thought_signatures", None)
+                        if not search_results:
+                            search_results = getattr(
+                                provider_client.client, "_last_search_results", None
+                            )
+
                     assistant_message = ChatMessage(
                         session_id=session.id,
                         role="assistant",
                         content=full_response,
                         thought_process=full_reasoning if full_reasoning else None,
+                        thought_signatures=thought_signatures,
+                        search_results=search_results,
                         provider=provider_id,
                         model=model_id,
                     )
@@ -285,7 +281,8 @@ async def chat_completion(
                     session.model = model_id
                     session.updated_at = datetime.now(timezone.utc)
                     db.commit()
-            except Exception:
+            except Exception as e:
+                print(f"Error saving assistant response: {e}")
                 yield f"data: {json.dumps({'error': 'Failed to save assistant response'})}\n\n"
 
         headers = {
@@ -296,55 +293,26 @@ async def chat_completion(
         return StreamingResponse(generate(), media_type="text/event-stream", headers=headers)
 
     try:
-        provider_kwargs = {
-            "temperature": chat_request.temperature,
-            "max_tokens": chat_request.max_tokens,
-            "frequency_penalty": chat_request.frequency_penalty,
-            "presence_penalty": chat_request.presence_penalty,
-            "top_p": chat_request.top_p,
-            "stop": chat_request.stop,
-        }
+        provider_kwargs = _build_provider_kwargs(chat_request)
+        if provider_id not in ("openrouter", "gemini"):
+            provider_kwargs.pop("reasoning", None)
+            provider_kwargs.pop("modalities", None)
+            provider_kwargs.pop("image_config", None)
 
-        if chat_request.thinking is not None:
-            provider_kwargs["thinking"] = chat_request.thinking
-        if chat_request.reasoning_effort is not None:
-            provider_kwargs["reasoning_effort"] = chat_request.reasoning_effort
-        if chat_request.disable_reasoning is not None:
-            provider_kwargs["disable_reasoning"] = chat_request.disable_reasoning
-        if chat_request.reasoning_format is not None:
-            provider_kwargs["reasoning_format"] = chat_request.reasoning_format
-        if chat_request.include_reasoning is not None:
-            provider_kwargs["include_reasoning"] = chat_request.include_reasoning
-        if chat_request.max_completion_tokens is not None:
-            provider_kwargs["max_completion_tokens"] = chat_request.max_completion_tokens
-        if chat_request.enable_thinking is not None:
-            provider_kwargs["enable_thinking"] = chat_request.enable_thinking
-        if chat_request.thinking_budget is not None:
-            provider_kwargs["thinking_budget"] = chat_request.thinking_budget
-        if chat_request.min_p is not None:
-            provider_kwargs["min_p"] = chat_request.min_p
-        if chat_request.top_k is not None:
-            provider_kwargs["top_k"] = chat_request.top_k
-        if chat_request.safe_prompt is not None:
-            provider_kwargs["safe_prompt"] = chat_request.safe_prompt
-        if chat_request.random_seed is not None:
-            provider_kwargs["random_seed"] = chat_request.random_seed
-        if chat_request.image_detail is not None:
-            provider_kwargs["image_detail"] = chat_request.image_detail
-        if chat_request.image_pixel_limit is not None:
-            provider_kwargs["image_pixel_limit"] = chat_request.image_pixel_limit.model_dump(exclude_none=True)
-        if chat_request.fps is not None:
-            provider_kwargs["fps"] = chat_request.fps
-        if chat_request.video_detail is not None:
-            provider_kwargs["video_detail"] = chat_request.video_detail
-        if chat_request.max_frames is not None:
-            provider_kwargs["max_frames"] = chat_request.max_frames
-
+        # Handle Seedream non-streaming if needed (though UI usually uses stream)
         response_content, reasoning_content = await provider_client.chat(
             model=model_id,
             messages=api_messages,
             **provider_kwargs,
         )
+
+        response_content, think_text = _extract_think_tag(response_content)
+        if think_text:
+            reasoning_content = f"{reasoning_content or ''}{think_text}"
+
+        # Process images for non-streaming response
+        response_content, _ = await _localize_markdown_images(response_content)
+
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -358,11 +326,19 @@ async def chat_completion(
         )
 
     try:
+        thought_signatures = None
+        search_results = None
+        if provider_id == "gemini":
+            thought_signatures = getattr(provider_client.client, "_last_thought_signatures", None)
+            search_results = getattr(provider_client.client, "_last_search_results", None)
+
         assistant_message = ChatMessage(
             session_id=session.id,
             role="assistant",
             content=response_content,
             thought_process=reasoning_content if reasoning_content else None,
+            thought_signatures=thought_signatures,
+            search_results=search_results,
             provider=provider_id,
             model=model_id,
         )

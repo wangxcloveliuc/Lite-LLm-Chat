@@ -21,6 +21,7 @@ class DoubaoProvider(BaseLLMProvider):
             "doubao-seed-1-6-flash-250828",
             "doubao-seed-1-6-lite-251015",
             "doubao-seed-1-6-251015",
+            "doubao-seed-code-preview-251028",
             "doubao-seed-1-8-251228",
             "deepseek-r1-250528",
             "deepseek-v3-250324",
@@ -28,6 +29,13 @@ class DoubaoProvider(BaseLLMProvider):
             "deepseek-v3-2-251201",
             "kimi-k2-thinking-251104",
             "glm-4-7-251222",
+            "doubao-seedream-4-5-251128",
+            "doubao-seedream-4-0-250828",
+            "doubao-seedance-1-5-pro-251215",
+            "doubao-seedance-1-0-pro-250528",
+            "doubao-seedance-1-0-pro-fast-251015",
+            "doubao-seedance-1-0-lite-i2v-250428",
+            "doubao-seedance-1-0-lite-t2v-250428",
         ]
         
         models = []
@@ -36,7 +44,9 @@ class DoubaoProvider(BaseLLMProvider):
             name = self._format_model_name(model_id)
             
             # Determine description based on model type
-            if "vision" in model_id.lower():
+            if "seedream" in model_id.lower():
+                desc_type = "image generation model"
+            elif "vision" in model_id.lower():
                 desc_type = "vision model"
             elif any(x in model_id.lower() for x in ["r1", "thinking", "seed"]):
                 desc_type = "reasoning model"

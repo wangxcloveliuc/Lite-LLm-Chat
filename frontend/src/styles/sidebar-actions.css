@@ -1,0 +1,26 @@
+.session-item:hover .session-actions,
+.session-item.menu-open .session-actions {
+  opacity: 1;
+}
+
+.dots-btn {
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  color: #6B7280;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s ease;
+}
+
+.dots-btn:hover {
+  background-color: #D1D5DB;
+}
+
+.dots-btn svg {
+  width: 16px;
+  height: 16px;
+}

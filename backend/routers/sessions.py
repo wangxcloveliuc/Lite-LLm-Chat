@@ -84,6 +84,8 @@ async def get_session_detail(session_id: int, db: Session = Depends(get_db)):
             "created_at": msg.created_at,
             "images": msg.images if not isinstance(msg.images, str) else (json.loads(msg.images) if msg.images else []),
             "videos": msg.videos if not isinstance(msg.videos, str) else (json.loads(msg.videos) if msg.videos else []),
+            "audios": msg.audios if not isinstance(msg.audios, str) else (json.loads(msg.audios) if msg.audios else []),
+            "search_results": msg.search_results if not isinstance(msg.search_results, str) else (json.loads(msg.search_results) if msg.search_results else []),
         }
         processed_messages.append(MessageResponse(**msg_dict))
 
