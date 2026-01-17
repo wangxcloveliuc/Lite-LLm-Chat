@@ -53,6 +53,7 @@ class GeminiClient(BaseClient):
             api_key=settings.gemini_api_key,
             http_options=http_options,
         )
+        self._last_thought_signatures: List[str] = []
 
     def _should_enable_thinking(self, model: str) -> bool:
         # Check if thinking is explicitly mentioned in model name or in the whitelist
@@ -120,6 +121,17 @@ class GeminiClient(BaseClient):
         except Exception as e:
             print(f"[GeminiClient] Failed to build image config: {e}. Falling back to raw config.")
             return config
+
+    def _normalize_media_resolution(self, resolution: Optional[str]):
+        if not resolution:
+            return None
+        media_cls = getattr(self._types, "MediaResolution", None)
+        if media_cls is None:
+            return resolution
+        attr = resolution.upper()
+        if hasattr(media_cls, attr):
+            return getattr(media_cls, attr)
+        return resolution
 
     def _format_image_markdown(self, images) -> str:
         if not images:
@@ -190,6 +202,20 @@ class GeminiClient(BaseClient):
                     images.append((data_bytes, mime_type))
         return images
 
+    def _extract_thought_signatures(self, response) -> List[str]:
+        signatures: List[str] = []
+        candidates = getattr(response, "candidates", None) or []
+        for candidate in candidates:
+            content = getattr(candidate, "content", None)
+            parts = getattr(content, "parts", None) or []
+            for part in parts:
+                sig = getattr(part, "thought_signature", None) or getattr(part, "thoughtSignature", None)
+                if isinstance(part, dict):
+                    sig = part.get("thought_signature") or part.get("thoughtSignature")
+                if sig:
+                    signatures.append(sig)
+        return signatures
+
     async def _handle_gemini_image_generation(
         self,
         model: str,
@@ -199,6 +225,13 @@ class GeminiClient(BaseClient):
         contents, system_instruction = self._messages_to_contents_and_system(messages)
         response_modalities = self._normalize_response_modalities(kwargs.get("modalities"))
         image_config = self._normalize_image_config(kwargs.get("image_config"))
+        media_resolution = self._normalize_media_resolution(kwargs.get("media_resolution"))
+        thinking_level = kwargs.get("thinking_level")
+        thinking_cfg = (
+            self._types.ThinkingConfig(thinking_level=thinking_level)
+            if thinking_level
+            else None
+        )
 
         config = self._types.GenerateContentConfig(
             temperature=kwargs.get("temperature", 1),
@@ -211,6 +244,8 @@ class GeminiClient(BaseClient):
             system_instruction=system_instruction,
             response_modalities=response_modalities,
             image_config=image_config,
+            thinking_config=thinking_cfg,
+            media_resolution=media_resolution,
         )
 
         response = await self._client.aio.models.generate_content(
@@ -218,6 +253,8 @@ class GeminiClient(BaseClient):
             contents=contents,
             config=config,
         )
+
+        self._last_thought_signatures = self._extract_thought_signatures(response)
 
         text = self._extract_regular_text_from_response(response)
         images = self._extract_inline_images(response)
@@ -260,11 +297,15 @@ class GeminiClient(BaseClient):
             else:
                 g_role = "user"
 
+            thought_signatures = m.get("thought_signatures") or []
             if isinstance(content, list):
                 parts = []
                 for part in content:
                     if part.get("type") == "text":
-                        parts.append({"text": part.get("text") or ""})
+                        item = {"text": part.get("text") or ""}
+                        if part.get("thought_signature"):
+                            item["thought_signature"] = part.get("thought_signature")
+                        parts.append(item)
                     elif part.get("type") == "image_url":
                         url = part.get("image_url", {}).get("url")
                         if url and url.startswith("/uploads/"):
@@ -341,19 +382,14 @@ class GeminiClient(BaseClient):
                              # Gemini google-genai SDK might not support remote URLs in inline_data easily
                              # For now, we skip or could fetch + base64 if needed.
                              pass
-                contents.append(
-                    {
-                        "role": g_role,
-                        "parts": parts,
-                    }
-                )
+                if thought_signatures and g_role == "model" and parts:
+                    parts[0]["thought_signature"] = thought_signatures[0]
+                contents.append({"role": g_role, "parts": parts})
             else:
-                contents.append(
-                    {
-                        "role": g_role,
-                        "parts": [{"text": content}],
-                    }
-                )
+                parts: List[Dict[str, object]] = [{"text": content}]
+                if thought_signatures and g_role == "model":
+                    parts[0]["thought_signature"] = thought_signatures[0]
+                contents.append({"role": g_role, "parts": parts})
 
         system_instruction = "\n".join(system_parts).strip() or None
         return contents, system_instruction
@@ -410,6 +446,7 @@ class GeminiClient(BaseClient):
         **kwargs,
     ) -> AsyncIterator[str]:
         try:
+            self._last_thought_signatures = []
             if self._is_imagen_model(model):
                 content, _reasoning = await self._handle_imagen(model, messages, **kwargs)
                 if content:
@@ -426,19 +463,24 @@ class GeminiClient(BaseClient):
 
             # Only enable thinking for specific models
             enable_thinking = self._should_enable_thinking(model)
-            
+            thinking_level = kwargs.get("thinking_level")
+            media_resolution = self._normalize_media_resolution(kwargs.get("media_resolution"))
+
             thinking_budget = kwargs.get("thinking_budget")
             if thinking_budget is None:
-                thinking_budget = -1 # Default to unlimited if model supports it
-                
-            thinking_cfg = (
-                self._types.ThinkingConfig(
-                    include_thoughts=True,
-                    thinking_budget=thinking_budget,
+                thinking_budget = -1  # Default to unlimited if model supports it
+
+            if thinking_level:
+                thinking_cfg = self._types.ThinkingConfig(thinking_level=thinking_level)
+            else:
+                thinking_cfg = (
+                    self._types.ThinkingConfig(
+                        include_thoughts=True,
+                        thinking_budget=thinking_budget,
+                    )
+                    if enable_thinking
+                    else None
                 )
-                if enable_thinking
-                else None
-            )
 
             # Safety settings
             safety_threshold = kwargs.get("safety_threshold")
@@ -461,6 +503,7 @@ class GeminiClient(BaseClient):
                 system_instruction=system_instruction,
                 thinking_config=thinking_cfg,
                 safety_settings=safety_settings,
+                media_resolution=media_resolution,
             )
 
             # The SDK provides async streaming under client.aio
@@ -469,6 +512,9 @@ class GeminiClient(BaseClient):
                 contents=contents,
                 config=config,
             ):
+                signatures = self._extract_thought_signatures(chunk)
+                if signatures:
+                    self._last_thought_signatures = signatures
                 reasoning = self._extract_reasoning_from_response(chunk)
                 if reasoning:
                     yield f"data: {json.dumps({'reasoning': reasoning})}\n\n"
@@ -493,6 +539,7 @@ class GeminiClient(BaseClient):
         **kwargs,
     ) -> Tuple[str, str]:
         try:
+            self._last_thought_signatures = []
             if self._is_imagen_model(model):
                 return await self._handle_imagen(model, messages, **kwargs)
             if self._is_gemini_image_model(model):
@@ -501,19 +548,24 @@ class GeminiClient(BaseClient):
 
             # Only enable thinking for specific models
             enable_thinking = self._should_enable_thinking(model)
-            
+            thinking_level = kwargs.get("thinking_level")
+            media_resolution = self._normalize_media_resolution(kwargs.get("media_resolution"))
+
             thinking_budget = kwargs.get("thinking_budget")
             if thinking_budget is None:
-                thinking_budget = -1 # Default to unlimited if model supports it
-                
-            thinking_cfg = (
-                self._types.ThinkingConfig(
-                    include_thoughts=True,
-                    thinking_budget=thinking_budget,
+                thinking_budget = -1  # Default to unlimited if model supports it
+
+            if thinking_level:
+                thinking_cfg = self._types.ThinkingConfig(thinking_level=thinking_level)
+            else:
+                thinking_cfg = (
+                    self._types.ThinkingConfig(
+                        include_thoughts=True,
+                        thinking_budget=thinking_budget,
+                    )
+                    if enable_thinking
+                    else None
                 )
-                if enable_thinking
-                else None
-            )
 
             # Safety settings
             safety_threshold = kwargs.get("safety_threshold")
@@ -536,6 +588,7 @@ class GeminiClient(BaseClient):
                 system_instruction=system_instruction,
                 thinking_config=thinking_cfg,
                 safety_settings=safety_settings,
+                media_resolution=media_resolution,
             )
 
             response = await self._client.aio.models.generate_content(
@@ -543,6 +596,8 @@ class GeminiClient(BaseClient):
                 contents=contents,
                 config=config,
             )
+
+            self._last_thought_signatures = self._extract_thought_signatures(response)
 
             content = self._extract_regular_text_from_response(response)
             reasoning = self._extract_reasoning_from_response(response)

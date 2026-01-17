@@ -25,6 +25,7 @@ export interface Message {
   provider?: string;
   model?: string;
   thought_process?: string;
+  thought_signatures?: string[];
 }
 
 export interface SearchResult {
@@ -148,6 +149,12 @@ export interface GeminiSettings extends DeepSeekSettings {
   seed?: number;
   thinking_budget?: number;
   safety_threshold?: 'BLOCK_NONE' | 'BLOCK_LOW_AND_ABOVE' | 'BLOCK_MED_AND_ABOVE' | 'BLOCK_ONLY_HIGH' | 'HARM_BLOCK_THRESHOLD_UNSPECIFIED';
+  thinking_level?: 'minimal' | 'low' | 'medium' | 'high';
+  media_resolution?:
+    | 'MEDIA_RESOLUTION_UNSPECIFIED'
+    | 'MEDIA_RESOLUTION_LOW'
+    | 'MEDIA_RESOLUTION_MEDIUM'
+    | 'MEDIA_RESOLUTION_HIGH';
   response_modalities?: ('IMAGE' | 'TEXT')[];
   image_aspect_ratio?: string;
   image_size?: '1K' | '2K' | '4K';
@@ -231,6 +238,12 @@ export interface ChatRequest {
   // Gemini-specific
   seed?: number;
   safety_threshold?: string;
+  thinking_level?: 'minimal' | 'low' | 'medium' | 'high';
+  media_resolution?:
+    | 'MEDIA_RESOLUTION_UNSPECIFIED'
+    | 'MEDIA_RESOLUTION_LOW'
+    | 'MEDIA_RESOLUTION_MEDIUM'
+    | 'MEDIA_RESOLUTION_HIGH';
   imagen_number_of_images?: number;
   imagen_image_size?: '1K' | '2K';
   imagen_aspect_ratio?: '1:1' | '3:4' | '4:3' | '9:16' | '16:9';

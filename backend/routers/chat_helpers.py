@@ -244,6 +244,12 @@ def _build_provider_kwargs(chat_request):
     if chat_request.imagen_person_generation is not None:
         provider_kwargs["imagen_person_generation"] = chat_request.imagen_person_generation
 
+    # Gemini 3 specific
+    if chat_request.thinking_level is not None:
+        provider_kwargs["thinking_level"] = chat_request.thinking_level
+    if chat_request.media_resolution is not None:
+        provider_kwargs["media_resolution"] = chat_request.media_resolution
+
     # Doubao Seedream specific
     if chat_request.sequential_image_generation is not None:
         provider_kwargs["sequential_image_generation"] = chat_request.sequential_image_generation

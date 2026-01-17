@@ -70,6 +70,12 @@ export type ChatRequestSettings = {
   response_modalities?: ('IMAGE' | 'TEXT')[];
   image_aspect_ratio?: string;
   image_size?: '1K' | '2K' | '4K';
+  thinking_level?: 'minimal' | 'low' | 'medium' | 'high';
+  media_resolution?:
+    | 'MEDIA_RESOLUTION_UNSPECIFIED'
+    | 'MEDIA_RESOLUTION_LOW'
+    | 'MEDIA_RESOLUTION_MEDIUM'
+    | 'MEDIA_RESOLUTION_HIGH';
   web_search?: boolean;
   web_search_results?: number;
   web_search_engine?: 'native' | 'exa';
@@ -286,6 +292,8 @@ const useChatSettings = ({ selectedProvider, selectedModel }: UseChatSettingsPar
     seed: undefined,
     thinking_budget: undefined,
     safety_threshold: 'BLOCK_NONE',
+    thinking_level: 'high',
+    media_resolution: 'MEDIA_RESOLUTION_UNSPECIFIED',
     response_modalities: ['IMAGE', 'TEXT'],
     image_aspect_ratio: '1:1',
     image_size: undefined,

@@ -93,6 +93,7 @@ async def chat_completion(
                 getattr(m, "videos", None),
                 getattr(m, "audios", None),
             ),
+            "thought_signatures": _ensure_list(getattr(m, "thought_signatures", None)),
         }
         for m in existing_messages
     ] + [
@@ -256,12 +257,16 @@ async def chat_completion(
             try:
                 if full_response:
                     full_response, _ = await _localize_markdown_images(full_response)
+                    thought_signatures = None
+                    if provider_id == "gemini":
+                        thought_signatures = getattr(provider_client.client, "_last_thought_signatures", None)
 
                     assistant_message = ChatMessage(
                         session_id=session.id,
                         role="assistant",
                         content=full_response,
                         thought_process=full_reasoning if full_reasoning else None,
+                        thought_signatures=thought_signatures,
                         search_results=search_results_buffer or None,
                         provider=provider_id,
                         model=model_id,
@@ -316,11 +321,16 @@ async def chat_completion(
         )
 
     try:
+        thought_signatures = None
+        if provider_id == "gemini":
+            thought_signatures = getattr(provider_client.client, "_last_thought_signatures", None)
+
         assistant_message = ChatMessage(
             session_id=session.id,
             role="assistant",
             content=response_content,
             thought_process=reasoning_content if reasoning_content else None,
+            thought_signatures=thought_signatures,
             provider=provider_id,
             model=model_id,
         )

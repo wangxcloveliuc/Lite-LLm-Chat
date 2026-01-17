@@ -30,6 +30,44 @@ const GeminiSettingsSection = ({ settings, handleChange }: GeminiSettingsSection
 
     <div className="setting-group">
       <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>
+        Thinking Level
+      </label>
+      <select
+        value={settings.thinking_level || 'high'}
+        onChange={(e) => handleChange('thinking_level', e.target.value || undefined)}
+        style={{ width: '100%', padding: '8px', border: '1px solid #E5E7EB', borderRadius: '4px', fontSize: '14px' }}
+      >
+        <option value="minimal">Minimal (Flash only)</option>
+        <option value="low">Low</option>
+        <option value="medium">Medium (Flash only)</option>
+        <option value="high">High (Default)</option>
+      </select>
+      <p style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+        Controls Gemini 3 reasoning depth. Flash supports minimal/medium; Pro supports low/high.
+      </p>
+    </div>
+
+    <div className="setting-group">
+      <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>
+        Media Resolution
+      </label>
+      <select
+        value={settings.media_resolution || 'MEDIA_RESOLUTION_UNSPECIFIED'}
+        onChange={(e) => handleChange('media_resolution', e.target.value || undefined)}
+        style={{ width: '100%', padding: '8px', border: '1px solid #E5E7EB', borderRadius: '4px', fontSize: '14px' }}
+      >
+        <option value="MEDIA_RESOLUTION_UNSPECIFIED">Unspecified</option>
+        <option value="MEDIA_RESOLUTION_LOW">Low</option>
+        <option value="MEDIA_RESOLUTION_MEDIUM">Medium</option>
+        <option value="MEDIA_RESOLUTION_HIGH">High</option>
+      </select>
+      <p style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+        Default resolution for media inputs (Gemini 3 models).
+      </p>
+    </div>
+
+    <div className="setting-group">
+      <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>
         Safety Threshold
       </label>
       <select

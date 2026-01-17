@@ -58,6 +58,7 @@ class MessageResponse(BaseModel):
     provider: Optional[str] = None
     model: Optional[str] = None
     thought_process: Optional[str] = None
+    thought_signatures: Optional[List[str]] = None
     created_at: datetime
 
     class Config:
@@ -111,7 +112,7 @@ class ChatRequest(BaseModel):
     message_provider: Optional[str] = None
     message_model: Optional[str] = None
     stream: bool = True
-    temperature: float = Field(default=0.7, ge=0.0, le=2.0)
+    temperature: float = Field(default=1.0, ge=0.0, le=2.0)
     max_tokens: Optional[int] = Field(default=None, ge=1)
     frequency_penalty: float = Field(default=0.0, ge=-2.0, le=2.0)
     presence_penalty: float = Field(default=0.0, ge=-2.0, le=2.0)
@@ -162,6 +163,12 @@ class ChatRequest(BaseModel):
     imagen_aspect_ratio: Optional[str] = Field(default=None, pattern="^(1:1|3:4|4:3|9:16|16:9)$")
     imagen_person_generation: Optional[str] = Field(
         default=None, pattern="^(dont_allow|allow_adult|allow_all)$"
+    )
+    # Gemini 3 specific
+    thinking_level: Optional[str] = Field(default=None, pattern="^(minimal|low|medium|high)$")
+    media_resolution: Optional[str] = Field(
+        default=None,
+        pattern="^(MEDIA_RESOLUTION_UNSPECIFIED|MEDIA_RESOLUTION_LOW|MEDIA_RESOLUTION_MEDIUM|MEDIA_RESOLUTION_HIGH)$",
     )
     # Doubao Seedream specific
     sequential_image_generation: Optional[str] = None
